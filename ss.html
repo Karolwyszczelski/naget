@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Furtka Stand Up Twist 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #e0e0e0; }
+        canvas { display: block; }
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            pointer-events: none; /* Klikanie przez panel */
+        }
+        h1 { margin: 0 0 5px 0; font-size: 18px; color: #333; }
+        p { margin: 0; font-size: 14px; color: #666; }
+        .badge {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-container">
+        <h1>Model: Stand Up Twist</h1>
+        <p>Kąt lameli: 45° (Efekt żaluzji)</p>
+        <p>Słupy: 80x80mm</p>
+        <div class="badge">Three.js Render</div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- 1. KONFIGURACJA SCENY ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+        scene.fog = new THREE.Fog(0xf0f0f0, 2, 15);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        // Ustawiamy kamerę nieco z boku, żeby od razu widzieć efekt "Twist"
+        camera.position.set(2.5, 2.0, 3.5); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Miękkie cienie
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 1, 0);
+
+        // --- 2. OŚWIETLENIE (Kluczowe dla efektu Twist) ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Główne słońce - ustawione pod kątem, żeby rzucać cień lameli na lamelę
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(5, 8, 3);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048; // Wysoka jakość cieni
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // --- 3. MATERIAŁY ---
+        // Ciemny antracyt, lekko matowy (proszkowy)
+        const twistMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2c2c2c, 
+            roughness: 0.6,
+            metalness: 0.3
+        });
+        
+        // Materiał na zawiasy/zamek (stal nierdzewna)
+        const steelMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xaaaaaa, 
+            roughness: 0.3, 
+            metalness: 0.8 
+        });
+
+        // --- 4. PARAMETRY KONSTRUKCYJNE (w metrach) ---
+        const gateConfig = {
+            width: 1.0,        // 1000mm
+            height: 1.6,       // Wysokość skrzydła
+            postSize: 0.08,    // Słupy 80x80mm
+            postHeight: 1.9,   // Wysokość słupa
+            slatWidth: 0.06,   // Profil 60mm (szerokość)
+            slatThick: 0.04,   // Profil 40mm (grubość)
+            twistAngle: 45,    // Kąt obrotu (stopnie)
+            slatGap: 0.09      // Rozstaw osiowy lameli
+        };
+
+        const group = new THREE.Group();
+        scene.add(group);
+
+        // --- 5. BUDOWANIE SŁUPÓW ---
+        const createPost = (x) => {
+            const geo = new THREE.BoxGeometry(gateConfig.postSize, gateConfig.postHeight, gateConfig.postSize);
+            const mesh = new THREE.Mesh(geo, twistMaterial);
+            mesh.position.set(x, gateConfig.postHeight/2, 0);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            return mesh;
+        };
+
+        // Rozstaw słupków = szerokość furtki + luzy + grubości słupków
+        const postOffset = gateConfig.width / 2 + gateConfig.postSize / 2 + 0.02;
+        const postL = createPost(-postOffset);
+        const postR = createPost(postOffset);
+        group.add(postL);
+        group.add(postR);
+
+        // --- 6. SKRZYDŁO FURTKI (TWIST) ---
+        const gateLeaf = new THREE.Group();
+        // Ustawienie pivota (punktu obrotu) przy lewym słupku
+        gateLeaf.position.set(-(gateConfig.width/2), 0, 0);
+        group.add(gateLeaf);
+
+        // A. Generowanie Lameli (Twist Profiles)
+        // Obliczamy ile wejdzie lameli
+        const availableWidth = gateConfig.width - (gateConfig.slatThick * 2); // Odejmujemy ramę boczną
+        const count = Math.floor(availableWidth / gateConfig.slatGap);
+        
+        const slatGeo = new THREE.BoxGeometry(gateConfig.slatThick, gateConfig.height, gateConfig.slatWidth);
+        
+        // Przesunięcie startowe, żeby wyśrodkować układ
+        const startX = (gateConfig.width - (count * gateConfig.slatGap)) / 2;
+
+        for(let i = 0; i < count; i++) {
+            const slat = new THREE.Mesh(slatGeo, twistMaterial);
+            
+            // Pozycja
+            const xPos = startX + (i * gateConfig.slatGap);
+            slat.position.set(xPos, gateConfig.height/2 + 0.05, 0); // +0.05 prześwit od dołu
+            
+            // *** KLUCZOWY MOMENT: OBRÓT (TWIST) ***
+            // Konwertujemy stopnie na radiany
+            slat.rotation.y = THREE.MathUtils.degToRad(gateConfig.twistAngle);
+            
+            slat.castShadow = true;
+            slat.receiveShadow = true;
+            gateLeaf.add(slat);
+        }
+
+        // B. Belki poziome dolne (wzmacniające konstrukcję twist)
+        // W tym modelu lamele często "przechodzą" przez profile lub są do nich spawane
+        const railGeo = new THREE.BoxGeometry(gateConfig.width - 0.04, 0.04, 0.04);
+        
+        const railBottom = new THREE.Mesh(railGeo, twistMaterial);
+        railBottom.position.set(gateConfig.width/2, 0.2, 0); // Dolna
+        railBottom.castShadow = true;
+        gateLeaf.add(railBottom);
+
+        const railMid = new THREE.Mesh(railGeo, twistMaterial);
+        railMid.position.set(gateConfig.width/2, 0.45, 0); // Środkowa/druga dolna
+        railMid.castShadow = true;
+        gateLeaf.add(railMid);
+
+        // C. Rama boczna (Profile zamykające skrzydło)
+        const sideGeo = new THREE.BoxGeometry(0.04, gateConfig.height, 0.04);
+        const frameL = new THREE.Mesh(sideGeo, twistMaterial);
+        frameL.position.set(0.02, gateConfig.height/2 + 0.05, 0);
+        gateLeaf.add(frameL);
+
+        const frameR = new THREE.Mesh(sideGeo, twistMaterial);
+        frameR.position.set(gateConfig.width - 0.02, gateConfig.height/2 + 0.05, 0);
+        gateLeaf.add(frameR);
+
+        // --- 7. DODATKI (Zamek / Pochwyt) ---
+        // Prosta wizualizacja kasety zamka
+        const lockBoxGeo = new THREE.BoxGeometry(0.05, 0.25, 0.1);
+        const lockBox = new THREE.Mesh(lockBoxGeo, twistMaterial);
+        lockBox.position.set(gateConfig.width - 0.02, 1.0, 0);
+        gateLeaf.add(lockBox);
+
+        // Klamka / Pochwyt
+        const handleGeo = new THREE.BoxGeometry(0.02, 0.15, 0.02);
+        const handle = new THREE.Mesh(handleGeo, steelMaterial);
+        handle.position.set(gateConfig.width - 0.02, 1.05, 0.06); // Wystaje na zewnątrz
+        gateLeaf.add(handle);
+
+        // Zawiasy
+        const hingeGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.08);
+        const hinge1 = new THREE.Mesh(hingeGeo, steelMaterial);
+        hinge1.position.set(0, 1.5, 0);
+        const hinge2 = new THREE.Mesh(hingeGeo, steelMaterial);
+        hinge2.position.set(0, 0.3, 0);
+        gateLeaf.add(hinge1);
+        gateLeaf.add(hinge2);
+
+
+        // --- 8. OTOCZENIE ---
+        const planeGeo = new THREE.PlaneGeometry(15, 15);
+        const planeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const plane = new THREE.Mesh(planeGeo, planeMat);
+        plane.rotation.x = -Math.PI / 2;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // --- 9. ANIMACJA ---
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // Delikatne otwieranie, żeby pokazać dynamikę
+            time += 0.005;
+            const openAngle = (Math.sin(time) * 0.5 + 0.5) * (Math.PI / 3); // Otwiera do 60 stopni
+            gateLeaf.rotation.y = openAngle;
+
+            renderer.render(scene, camera);
+        }
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
