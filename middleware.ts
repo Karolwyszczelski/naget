@@ -1,36 +1,31 @@
 // middleware.ts
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   // bazowa odpowiedź, na której Supabase będzie aktualizował cookies
-  let supabaseResponse = NextResponse.next({
+  let response = NextResponse.next({
     request,
   });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    // użyj tego, co masz w env: ANON / PUBLISHABLE key
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
+        // Supabase oczekuje tablicy { name, value }
         getAll() {
-          return request.cookies.getAll();
+          return request.cookies
+            .getAll()
+            .map(({ name, value }) => ({ name, value }));
         },
-        setAll(cookiesToSet) {
-          // aktualizacja cookies w obiekcie request
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value, options)
-          );
-
-          // tworzymy nową odpowiedź z odświeżonymi cookies
-          supabaseResponse = NextResponse.next({
-            request,
+        // wszystkie nowe/odświeżone ciasteczka zapisujemy WYŁĄCZNIE na response
+        setAll(
+          cookiesToSet: { name: string; value: string; options: CookieOptions }[]
+        ) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
           });
-
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
         },
       },
     }
@@ -47,8 +42,16 @@ export async function middleware(request: NextRequest) {
 
   // middleware interesuje nas tylko na /admin/*
   if (!isAdminRoute) {
-    return supabaseResponse;
+    return response;
   }
+
+  // helper do kopiowania cookies na odpowiedź przekierowującą
+  const withCopiedCookies = (res: NextResponse) => {
+    response.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value);
+    });
+    return res;
+  };
 
   // 1) Brak usera – wpuszczamy tylko na /admin/login
   if (!user) {
@@ -58,13 +61,11 @@ export async function middleware(request: NextRequest) {
       redirectUrl.searchParams.set("redirectTo", pathname);
 
       const redirectResponse = NextResponse.redirect(redirectUrl);
-      // kopiujemy cookies z supabaseResponse (żeby sesja się nie rozjechała)
-      redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
-      return redirectResponse;
+      return withCopiedCookies(redirectResponse);
     }
 
     // /admin/login bez sesji – pokazujemy login, ale cookies już są odświeżone
-    return supabaseResponse;
+    return response;
   }
 
   // 2) Jest user – sprawdzamy, czy jest adminem
@@ -84,8 +85,7 @@ export async function middleware(request: NextRequest) {
     redirectUrl.searchParams.set("adminError", "no-permission");
 
     const redirectResponse = NextResponse.redirect(redirectUrl);
-    redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
-    return redirectResponse;
+    return withCopiedCookies(redirectResponse);
   }
 
   // 2b) Admin wchodzi na /admin/login – przekieruj do /admin/orders
@@ -95,12 +95,11 @@ export async function middleware(request: NextRequest) {
     redirectUrl.searchParams.delete("redirectTo");
 
     const redirectResponse = NextResponse.redirect(redirectUrl);
-    redirectResponse.cookies.setAll(supabaseResponse.cookies.getAll());
-    return redirectResponse;
+    return withCopiedCookies(redirectResponse);
   }
 
   // 3) Admin + dowolny inny /admin/... – przepuszczamy
-  return supabaseResponse;
+  return response;
 }
 
 // middleware uruchamia się tylko dla /admin/*

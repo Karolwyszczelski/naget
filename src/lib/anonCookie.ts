@@ -2,12 +2,14 @@
 import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 
-export function getOrCreateAnonId() {
-  const cookieStore = cookies();
+export async function getOrCreateAnonId() {
+  const cookieStore = await cookies(); // <- await
+
   const existing = cookieStore.get("naget_anon_id")?.value;
   if (existing) return existing;
 
   const newId = randomUUID();
+
   cookieStore.set("naget_anon_id", newId, {
     httpOnly: true,
     sameSite: "lax",

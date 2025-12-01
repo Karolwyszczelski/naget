@@ -1,12 +1,11 @@
-// app/admin/login/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "../../../../untils/supabase/client";
 
 export default function AdminLoginPage() {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -59,7 +58,7 @@ export default function AdminLoginPage() {
       }
 
       // 3) OK – przekierowanie do panelu
-      router.push("/admin");
+      router.push("/admin/orders");
     } catch {
       setError("Wystąpił błąd podczas logowania.");
     } finally {

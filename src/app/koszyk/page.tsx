@@ -518,17 +518,20 @@ if (
 }
 
                       // STAND UP – zadaszenie
-                      if (
-                        pid === "standup-zadaszenie" ||
-                        name.includes("zadaszenie stand up")
-                      ) {
-                        return (
-                          <ZadaszenieStandup
-                            colorHex={colorHex}
-                            finish={finishId}
-                          />
-                        );
-                      }
+if (
+  pid === "standup-zadaszenie" ||
+  name.includes("zadaszenie stand up")
+) {
+  return (
+    <ZadaszenieStandup
+      colorHex={colorHex}
+      finish={finishId}
+      profileId={profileId}
+      spacingId={spacingId}
+      fillType={fillType}
+    />
+  );
+}
 
                       // SLAB – furtka
                       if (

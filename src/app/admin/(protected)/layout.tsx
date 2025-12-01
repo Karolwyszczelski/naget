@@ -1,7 +1,8 @@
 // app/admin/(protected)/layout.tsx
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "../../../../untils/supabase/server"; // dostosuj ścieżkę
+import { createServerSupabaseClient } from "../../../../untils/supabase/server";
+import AdminSidebar from "../../components/AdminSidebar";
 
 export default async function AdminLayout({
   children,

@@ -5,8 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { FaUser, FaShoppingCart, FaStar } from "react-icons/fa";
 import { useCart } from "../CartContext";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import type { User } from "@supabase/supabase-js";
+import { createClient } from "../../../untils/supabase/client";
+import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type WishlistPreviewItem = {
   id: string;
@@ -17,8 +17,12 @@ type WishlistPreviewItem = {
 };
 
 export default function Navbar() {
-  const supabase = createClientComponentClient();
-  const { items, itemsCount, totalAmount } = useCart();
+  const supabase = createClient();
+  const { items, totalAmount } = useCart();
+  const itemsCount = items.reduce(
+    (sum, item) => sum + (item.quantity ?? 1),
+    0
+  );
 
   const [user, setUser] = useState<User | null>(null);
 
@@ -68,10 +72,12 @@ export default function Navbar() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted) return;
-      setUser(session?.user ?? null);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (!isMounted) return;
+        setUser(session?.user ?? null);
+      }
+    );
 
     return () => {
       isMounted = false;
