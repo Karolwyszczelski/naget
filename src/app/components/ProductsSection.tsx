@@ -51,7 +51,7 @@ const products: ProductCard[] = [
       "Brama przesuwna Stand Up dopasowana do ogrodzeń panelowych i nowoczesnych frontów.",
     fromPrice: "od 7 900 zł",
     href: "/stand-up/brama-dwuskrzydlowa",
-    image: "/products/standup-brama-dwuskrzydlowa.png",
+    image: "/products/standup-brama-dwuskrzydlowa1.png",
   },
   {
     id: "slab-furtka",
