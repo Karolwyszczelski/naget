@@ -46,6 +46,7 @@ const profiles = [
 
 // rozstaw (w przybliżeniu cm)
 const spacingOptionsBase = [
+  { id: "2", label: "ok. 2 cm – maksymalna prywatność", factor: 1.15 },
   { id: "4", label: "ok. 4 cm – więcej prywatności", factor: 1.08 },
   { id: "6", label: "ok. 6 cm – standard", factor: 1.0 },
   { id: "9", label: "ok. 9 cm – bardziej ażurowe", factor: 0.95 },
@@ -55,7 +56,7 @@ const spacingOptionsBase = [
 const spacingOptionsByProfile: Record<string, string[]> = {
   "60x40": ["4", "6", "9"],
   "80x40": ["4", "6", "9"],
-  "80x80": ["6", "9"], // dla 80×80 brak bardzo gęstego rozstawu
+  "80x80": ["6"], // dla 80×80 tylko 6 cm
 };
 
 // kąty obrotu TWIST
@@ -123,7 +124,7 @@ const upsellItems = [
     description:
       "Brama w tym samym rytmie profili co furtka – skonfiguruj w tej samej serii.",
     href: "/stand-up/brama-przesuwna",
-    image: "/products/standup-brama.png",
+    image: "/products/standup-brama-jednos.png",
     badge: "Brama przesuwna",
   },
   {
@@ -132,7 +133,7 @@ const upsellItems = [
     description:
       "Zadaszenie wejścia dopasowane do profili furtki – ochrona przed deszczem i śniegiem.",
     href: "/stand-up/zadaszenie",
-    image: "/products/standup-zadaszenie.gif",
+    image: "/products/zadaszenie-stand.png",
     badge: "Zadaszenie",
   },
   {
@@ -141,7 +142,7 @@ const upsellItems = [
     description:
       "Miejsce na skrzynkę, wideodomofon i automatykę – spójne z linią Stand Up.",
     href: "/stand-up/slupek-multimedialny",
-    image: undefined,
+    image: "/products/addons-slupki-multimedialne-paczkomaty.png",
     badge: "Słupek multimedialny",
   },
   {
@@ -153,6 +154,16 @@ const upsellItems = [
     image: "/products/addons-automat.png",
     badge: "Automatyka",
   },
+  {
+    id: "upsell-drewutnie",
+    name: "Drewutnie",
+    description:
+      "Praktyczne i estetyczne drewutnie dopasowane do linii Stand Up.",
+    href: "/dodatki/drewutnie",
+    image: "/products/addons-drewutnie.png",
+    badge: "Drewutnie",
+  },
+
 ];
 
 export default function StandUpFurtkaPage() {
@@ -191,7 +202,7 @@ export default function StandUpFurtkaPage() {
   const [profileId, setProfileId] = useState<"60x40" | "80x40" | "80x80">(
     "60x40"
   );
-  const [spacingId, setSpacingId] = useState<"4" | "6" | "9">("6");
+  const [spacingId, setSpacingId] = useState<"2" | "4" | "6" | "9">("6");
 
   // kolor RAL + struktura
   const [colorMode, setColorMode] = useState<"standard" | "custom">(
@@ -215,27 +226,33 @@ export default function StandUpFurtkaPage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    let allowed =
-      spacingOptionsByProfile[selectedProfile.id] ??
-      spacingOptionsBase.map((s) => s.id);
-
-    // DLA TWIST + profili 80×40 / 80×80 usuwamy rozstaw 9 cm
-    if (
-      fillType === "twist" &&
-      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
-    ) {
-      allowed = allowed.filter((id) => id !== "9");
+  // TWIST – osobna logika:
+  // 60×40 → tylko 2 cm
+  // 80×40 → tylko 2 cm
+  // 80×80 → tylko 6 cm
+  if (fillType === "twist") {
+    if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
+      return spacingOptionsBase.filter((s) => s.id === "2");
     }
+    if (selectedProfile.id === "80x80") {
+      return spacingOptionsBase.filter((s) => s.id === "6");
+    }
+  }
 
-    return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id, fillType]);
+  // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
+  const allowed =
+    spacingOptionsByProfile[selectedProfile.id] ??
+    spacingOptionsBase.map((s) => s.id);
+
+  return spacingOptionsBase.filter((s) => allowed.includes(s.id));
+}, [selectedProfile.id, fillType]);
 
   useEffect(() => {
-    const allowedIds = availableSpacingOptions.map((s) => s.id);
-    if (!allowedIds.includes(spacingId)) {
-      setSpacingId(allowedIds[0] as "4" | "6" | "9");
-    }
-  }, [availableSpacingOptions, spacingId]);
+  const allowedIds = availableSpacingOptions.map((s) => s.id);
+  if (!allowedIds.includes(spacingId)) {
+    setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
+  }
+}, [availableSpacingOptions, spacingId]);
 
   // przy zmianie PROSTA/TWIST resetujemy główne zdjęcie do modelu 3D
   useEffect(() => {

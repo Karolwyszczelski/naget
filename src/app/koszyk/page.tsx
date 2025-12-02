@@ -67,7 +67,7 @@ const CONFIG_ROUTES: Record<string, string> = {
   "standup-brama": "/stand-up/brama-przesuwna",
   "standup-brama-przesuwna": "/stand-up/brama-przesuwna",
   "standup-zadaszenie": "/stand-up/zadaszenie",
-  "standup-brama-skrzydlowa": "/stand-up/brama-dwuskrzydlowa",
+  "standup-brama-dwuskrzydlowa": "/stand-up/brama-dwuskrzydlowa",
 
   "slab-furtka": "/slab-fence/furtka",
   "slab-brama": "/slab-fence/brama-przesuwna",

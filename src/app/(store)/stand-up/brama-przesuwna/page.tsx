@@ -1097,7 +1097,7 @@ export default function StandUpBramaPrzesuwnaPage() {
             </div>
             <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-soft bg-transparent">
               <Image
-                src="/products/brama-stand-przesuwna.jpeg"
+                src="/products/brama-stand-przesuwna1.jpeg"
                 alt="Brama przesuwna aluminiowa Stand Up"
                 fill
                 className="object-cover object-center"
