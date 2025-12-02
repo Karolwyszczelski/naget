@@ -355,7 +355,7 @@ export default function StandUpBramaDwuskrzydlowaPage() {
               Brama dwuskrzydłowa z pionowych profili dopasowana do ogrodzeń
               Stand Up. Dostępna w wersji prostej i TWIST, w standardowych
               szerokościach 4000 / 5000 / 6000 mm oraz na wymiar. W komplecie{" "}
-              <strong>2 słupy 100×100×2 mm, zawiasy regulowane i zamek</strong>{" "}
+              <strong>2 słupy 100×100×2 mm, zawiasy regulowane.</strong>{" "}
               – gotowa do zintegrowania z automatyką.
             </p>
           </header>
@@ -376,10 +376,9 @@ export default function StandUpBramaDwuskrzydlowaPage() {
                 <p>
                   W standardzie:{" "}
                   <strong>
-                    2 słupy 100×100×2 mm, zawiasy regulowane, zamek
+                    2 słupy 100×100×2 mm, zawiasy regulowane, zamek.
                   </strong>
-                  . Konstrukcja przygotowana pod montaż automatyki i
-                  elektrozaczepu.
+                  . Konstrukcja przygotowana pod montaż automatyki.
                 </p>
                 <p className="text-[11px] text-neutral-500">
                   Podgląd ma charakter poglądowy – wiążące są parametry

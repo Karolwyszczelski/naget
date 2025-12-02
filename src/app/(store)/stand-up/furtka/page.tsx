@@ -81,13 +81,13 @@ const finishOptions = [
     id: "mat",
     label: "Struktura mat",
     factor: 1.0,
-    swatch: "/textures/struktura-mat.png",       // wrzuć plik do /public/textures
+    swatch: "/textures/struktura-mat.png",
   },
   {
     id: "brokat",
     label: "Struktura drobny brokat",
     factor: 1.03,
-    swatch: "/textures/struktura-brokat.png",    // wrzuć plik do /public/textures
+    swatch: "/textures/struktura-brokat.png",
   },
 ] as const;
 
@@ -112,7 +112,7 @@ const variantImages: Record<"prosta" | "twist", string[]> = {
   twist: [
     "/products/standup-furtka-twist-main.jpg",
     "/products/standup-furtka-twist-detail-1.jpeg",
-    "/products/standup-furtka-twist-detail-2.jpg",
+    "/products/standup-furtka-twist-detail-2.jpeg",
   ],
 };
 
@@ -140,7 +140,7 @@ const upsellItems = [
     name: "Słupek multimedialny Stand Up",
     description:
       "Miejsce na skrzynkę, wideodomofon i automatykę – spójne z linią Stand Up.",
-    href: "/stand-up/slupek-multimedialny", // dostosuj ścieżkę do swojego routera
+    href: "/stand-up/slupek-multimedialny",
     image: undefined,
     badge: "Słupek multimedialny",
   },
@@ -204,6 +204,9 @@ export default function StandUpFurtkaPage() {
   // ilość
   const [quantity, setQuantity] = useState(1);
 
+  // aktywny widok w galerii (null = model 3D, string = ścieżka zdjęcia)
+  const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
+
   const selectedHeight =
     standardHeights.find((h) => h.id === heightId) ?? standardHeights[0];
   const selectedWidth =
@@ -212,11 +215,20 @@ export default function StandUpFurtkaPage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    const allowed =
+    let allowed =
       spacingOptionsByProfile[selectedProfile.id] ??
       spacingOptionsBase.map((s) => s.id);
+
+    // DLA TWIST + profili 80×40 / 80×80 usuwamy rozstaw 9 cm
+    if (
+      fillType === "twist" &&
+      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
+    ) {
+      allowed = allowed.filter((id) => id !== "9");
+    }
+
     return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id]);
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
     const allowedIds = availableSpacingOptions.map((s) => s.id);
@@ -224,6 +236,11 @@ export default function StandUpFurtkaPage() {
       setSpacingId(allowedIds[0] as "4" | "6" | "9");
     }
   }, [availableSpacingOptions, spacingId]);
+
+  // przy zmianie PROSTA/TWIST resetujemy główne zdjęcie do modelu 3D
+  useEffect(() => {
+    setActiveImageSrc(null);
+  }, [fillType]);
 
   const selectedSpacing =
     availableSpacingOptions.find((s) => s.id === spacingId) ??
@@ -355,6 +372,11 @@ export default function StandUpFurtkaPage() {
   const thumbs = variantImages[fillType].slice(1);
   const twistAngle = twistAnglesByProfile[profileId];
 
+  const activeImageAlt =
+    fillType === "prosta"
+      ? "Furtka Stand Up – widok prosty"
+      : "Furtka Stand Up Twist – widok";
+
   return (
     <>
       {/* SEKCJA GŁÓWNA PRODUKTU */}
@@ -377,22 +399,47 @@ export default function StandUpFurtkaPage() {
             </p>
           </header>
 
-          {/* UKŁAD 2 KOLUMN: PODGLĄD (3D) + KONFIGURATOR */}
+          {/* UKŁAD 2 KOLUMN: PODGLĄD (3D / FOTO) + KONFIGURATOR */}
           <div className="grid gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)] items-start">
-            {/* LEWA – MODEL 3D + MINIATURY */}
+            {/* LEWA – MODEL 3D / ZDJĘCIE + MINIATURY */}
             <div className="space-y-4">
-              <FurtkaModel
-                colorHex={previewColorHex}
-                finish={finishId}
-                profileId={profileId}
-                spacingId={spacingId}
-                fillType={fillType}
-              />
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-soft bg-transparent">
+                {activeImageSrc ? (
+                  <div className="relative w-full aspect-[4/3]">
+                    <Image
+                      src={activeImageSrc}
+                      alt={activeImageAlt}
+                      fill
+                      className="object-cover object-center"
+                    />
+                  </div>
+                ) : (
+                  <FurtkaModel
+                    colorHex={previewColorHex}
+                    finish={finishId}
+                    profileId={profileId}
+                    spacingId={spacingId}
+                    fillType={fillType}
+                  />
+                )}
+
+                {activeImageSrc && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveImageSrc(null)}
+                    className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary shadow-soft hover:bg-white"
+                  >
+                    Pokaż model 3D
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {thumbs.map((src, idx) => (
-                  <div
+                  <button
                     key={src}
+                    type="button"
+                    onClick={() => setActiveImageSrc(src)}
                     className="relative h-28 rounded-2xl overflow-hidden shadow-soft bg-transparent"
                   >
                     <Image
@@ -408,7 +455,7 @@ export default function StandUpFurtkaPage() {
                     <span className="absolute left-2 bottom-2 rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-primary">
                       {fillType === "prosta" ? "Prosty" : "Twist"}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -721,216 +768,223 @@ export default function StandUpFurtkaPage() {
               )}
 
               {/* KROK 4 – KOLOR + STRUKTURA */}
-{step === 4 && (
-  <section className="space-y-3 border-t border-border/60 pt-4">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-      Krok 4 · Kolor RAL i struktura
-    </p>
+              {step === 4 && (
+                <section className="space-y-3 border-t border-border/60 pt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                    Krok 4 · Kolor RAL i struktura
+                  </p>
 
-    {/* Kolory standardowe */}
-    <div className="flex flex-wrap gap-2">
-      {baseColors.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          onClick={() => {
-            setColorMode("standard");
-            setColorId(c.id);
-          }}
-          className={`flex items-center gap-2 rounded-2xl border px-3 py-1 text-[12px] ${
-            colorMode === "standard" && colorId === c.id
-              ? "bg-accent text-white border-accent"
-              : "bg-white text-primary border-border hover:border-accent hover:text-accent"
-          }`}
-        >
-          <span
-            className="inline-block h-4 w-4 rounded-full border border-white/60"
-            style={{ backgroundColor: c.hex }}
-          />
-          {c.label}
-        </button>
-      ))}
+                  {/* Kolory standardowe */}
+                  <div className="flex flex-wrap gap-2">
+                    {baseColors.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setColorMode("standard");
+                          setColorId(c.id);
+                        }}
+                        className={`flex items-center gap-2 rounded-2xl border px-3 py-1 text-[12px] ${
+                          colorMode === "standard" && colorId === c.id
+                            ? "bg-accent text-white border-accent"
+                            : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+                        }`}
+                      >
+                        <span
+                          className="inline-block h-4 w-4 rounded-full border border-white/60"
+                          style={{ backgroundColor: c.hex }}
+                        />
+                        {c.label}
+                      </button>
+                    ))}
 
-      <button
-        type="button"
-        onClick={() => setColorMode("custom")}
-        className={`px-3 py-1 rounded-2xl border text-[12px] ${
-          colorMode === "custom"
-            ? "bg-accent text-white border-accent"
-            : "bg-white text-primary border-border hover:border-accent hover:text-accent"
-        }`}
-      >
-        Dowolny kolor RAL (+dopłata)
-      </button>
-    </div>
+                    <button
+                      type="button"
+                      onClick={() => setColorMode("custom")}
+                      className={`px-3 py-1 rounded-2xl border text-[12px] ${
+                        colorMode === "custom"
+                          ? "bg-accent text-white border-accent"
+                          : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+                      }`}
+                    >
+                      Dowolny kolor RAL (+dopłata)
+                    </button>
+                  </div>
 
-    {colorMode === "custom" && (
-      <div className="flex flex-col gap-2 max-w-xs">
-        <input
-          type="text"
-          value={customRalCode}
-          onChange={(e) => setCustomRalCode(e.target.value)}
-          placeholder="np. 7021, 9007, 8019..."
-          className="rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-        />
-        <p className="text-[11px] text-neutral-500">
-          Możliwe wszystkie kolory z palety RAL. Dopłata zależy od wybranego
-          odcienia i struktury.
-        </p>
+                  {colorMode === "custom" && (
+                    <div className="flex flex-col gap-2 max-w-xs">
+                      <input
+                        type="text"
+                        value={customRalCode}
+                        onChange={(e) => setCustomRalCode(e.target.value)}
+                        placeholder="np. 7021, 9007, 8019..."
+                        className="rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      />
+                      <p className="text-[11px] text-neutral-500">
+                        Możliwe wszystkie kolory z palety RAL. Dopłata zależy
+                        od wybranego odcienia i struktury.
+                      </p>
 
-        {/* Przycisk do pełnej palety RAL */}
-        <Link
-          href="https://www.ralcolorchart.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center justify-center rounded-2xl border border-accent/70 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent hover:bg-accent hover:text-white hover:border-accent transition-colors"
-        >
-          Zobacz pełną paletę RAL
-        </Link>
-      </div>
-    )}
+                      {/* Przycisk do pełnej palety RAL */}
+                      <Link
+                        href="https://www.ralcolorchart.com/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-2xl border border-accent/70 bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent hover:bg-accent hover:text-white hover:border-accent transition-colors"
+                      >
+                        Zobacz pełną paletę RAL
+                      </Link>
+                    </div>
+                  )}
 
-    {/* Struktura powłoki */}
-    <div className="space-y-2">
-      <p className="text-[12px] font-semibold text-primary">
-        Struktura powłoki
-      </p>
-      <div className="flex flex-wrap gap-3">
-        {finishOptions.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFinishId(f.id)}
-            className={`px-3 py-1 rounded-full border text-[12px] ${
-              finishId === f.id
-                ? "bg-accent text-white border-accent"
-                : "bg-white text-primary border-border hover:border-accent hover:text-accent"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <span className="relative h-6 w-6 rounded-full overflow-hidden border border-white/70">
-                <Image
-                  src={f.swatch}
-                  alt={f.label}
-                  fill
-                  className="object-cover"
-                />
-              </span>
-              <span>{f.label}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-      <p className="text-[11px] text-neutral-500">
-        Furtki malujemy proszkowo w strukturze mat lub drobny brokat – obie
-        powłoki są trwałe i odporne na warunki atmosferyczne.
-      </p>
-    </div>
-  </section>
-)}
+                  {/* Struktura powłoki */}
+                  <div className="space-y-2">
+                    <p className="text-[12px] font-semibold text-primary">
+                      Struktura powłoki
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {finishOptions.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setFinishId(f.id)}
+                          className={`px-3 py-1 rounded-full border text-[12px] ${
+                            finishId === f.id
+                              ? "bg-accent text-white border-accent"
+                              : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+                          }`}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <span className="relative h-6 w-6 rounded-full overflow-hidden border border-white/70">
+                              <Image
+                                src={f.swatch}
+                                alt={f.label}
+                                fill
+                                className="object-cover"
+                              />
+                            </span>
+                            <span>{f.label}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-neutral-500">
+                      Furtki malujemy proszkowo w strukturze mat lub drobny
+                      brokat – obie powłoki są trwałe i odporne na warunki
+                      atmosferyczne.
+                    </p>
+                  </div>
+                </section>
+              )}
 
               {/* KROK 5 – ILOŚĆ + PODSUMOWANIE + DODATKI */}
-{step === 5 && (
-  <section className="space-y-5 border-t border-border/60 pt-4">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-      Krok 5 · Ilość i podsumowanie
-    </p>
+              {step === 5 && (
+                <section className="space-y-5 border-t border-border/60 pt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                    Krok 5 · Ilość i podsumowanie
+                  </p>
 
-    <div className="flex items-center gap-3">
-      <p className="text-[12px] font-semibold text-primary">Ilość sztuk</p>
-      <input
-        type="number"
-        min={1}
-        value={quantity}
-        onChange={(e) =>
-          setQuantity(Math.max(1, Number(e.target.value) || 1))
-        }
-        className="w-20 rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent text-center"
-      />
-    </div>
+                  <div className="flex items-center gap-3">
+                    <p className="text-[12px] font-semibold text-primary">
+                      Ilość sztuk
+                    </p>
+                    <input
+                      type="number"
+                      min={1}
+                      value={quantity}
+                      onChange={(e) =>
+                        setQuantity(Math.max(1, Number(e.target.value) || 1))
+                      }
+                      className="w-20 rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent text-center"
+                    />
+                  </div>
 
-    <div className="flex items-center justify-between gap-4 flex-wrap">
-      <div className="text-[13px] text-neutral-700">
-        <p>
-          Cena jednostkowa:{" "}
-          <strong className="text-primary">{priceLabel}</strong>
-        </p>
-        <p>
-          Ilość:{" "}
-          <strong className="text-primary">
-            {quantity} szt.
-          </strong>
-        </p>
-        <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
-          Uwzględniamy profil, rozstaw, wariant Prosty/Twist, kolor RAL
-          oraz wykończenie powłoki. Cena ma charakter orientacyjny.
-        </p>
-      </div>
-      <div className="text-right">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
-          Razem orientacyjnie
-        </p>
-        <p className="text-[20px] font-extrabold text-primary">
-          {totalLabel}
-        </p>
-      </div>
-    </div>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="text-[13px] text-neutral-700">
+                      <p>
+                        Cena jednostkowa:{" "}
+                        <strong className="text-primary">
+                          {priceLabel}
+                        </strong>
+                      </p>
+                      <p>
+                        Ilość:{" "}
+                        <strong className="text-primary">
+                          {quantity} szt.
+                        </strong>
+                      </p>
+                      <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
+                        Uwzględniamy profil, rozstaw, wariant Prosty/Twist,
+                        kolor RAL oraz wykończenie powłoki. Cena ma charakter
+                        orientacyjny.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                        Razem orientacyjnie
+                      </p>
+                      <p className="text-[20px] font-extrabold text-primary">
+                        {totalLabel}
+                      </p>
+                    </div>
+                  </div>
 
-    {/* DODATKI W TEJ SAMEJ SERII – UPSELL */}
-    <div className="mt-2 space-y-3 rounded-2xl bg-neutral-50/80 border border-border/70 p-3 md:p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-        Do kompletu w serii Stand Up
-      </p>
-      <p className="text-[12px] text-neutral-700">
-        Najczęściej z furtką Stand Up zamawiane są także: brama przesuwna,
-        zadaszenie wejścia, słupek multimedialny oraz automatyka. Możesz
-        przejść do ich konfiguratorów jednym kliknięciem.
-      </p>
+                  {/* DODATKI W TEJ SAMEJ SERII – UPSELL */}
+                  <div className="mt-2 space-y-3 rounded-2xl bg-neutral-50/80 border border-border/70 p-3 md:p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                      Do kompletu w serii Stand Up
+                    </p>
+                    <p className="text-[12px] text-neutral-700">
+                      Najczęściej z furtką Stand Up zamawiane są także: brama
+                      przesuwna, zadaszenie wejścia, słupek multimedialny oraz
+                      automatyka. Możesz przejść do ich konfiguratorów jednym
+                      kliknięciem.
+                    </p>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {upsellItems.map((item) => (
-          <article
-            key={item.id}
-            className="flex gap-3 rounded-2xl bg-white/90 border border-border/70 p-3"
-          >
-            {item.image && (
-              <div className="relative h-16 w-16 flex-shrink-0 rounded-xl overflow-hidden bg-neutral-100">
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  fill
-                  className="object-cover object-center"
-                />
-                {item.badge && (
-                  <span className="absolute left-1 bottom-1 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-            )}
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {upsellItems.map((item) => (
+                        <article
+                          key={item.id}
+                          className="flex gap-3 rounded-2xl bg-white/90 border border-border/70 p-3"
+                        >
+                          {item.image && (
+                            <div className="relative h-16 w-16 flex-shrink-0 rounded-xl overflow-hidden bg-neutral-100">
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                fill
+                                className="object-cover object-center"
+                              />
+                              {item.badge && (
+                                <span className="absolute left-1 bottom-1 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                          )}
 
-            <div className="flex-1 flex flex-col gap-1">
-              <h3 className="text-[13px] font-semibold text-primary">
-                {item.name}
-              </h3>
-              <p className="text-[11px] text-neutral-700">
-                {item.description}
-              </p>
-              <div className="mt-1">
-                <Link
-                  href={item.href}
-                  className="inline-flex items-center justify-center rounded-2xl border border-accent text-accent text-[10px] font-semibold uppercase tracking-[0.18em] px-3 py-1 hover:bg-accent hover:text-white transition-colors"
-                >
-                  Otwórz konfigurator
-                </Link>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-)}
+                          <div className="flex-1 flex flex-col gap-1">
+                            <h3 className="text-[13px] font-semibold text-primary">
+                              {item.name}
+                            </h3>
+                            <p className="text-[11px] text-neutral-700">
+                              {item.description}
+                            </p>
+                            <div className="mt-1">
+                              <Link
+                                href={item.href}
+                                className="inline-flex items-center justify-center rounded-2xl border border-accent text-accent text-[10px] font-semibold uppercase tracking-[0.18em] px-3 py-1 hover:bg-accent hover:text-white transition-colors"
+                              >
+                                Otwórz konfigurator
+                              </Link>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* NAWIGACJA DÓŁ KARTY */}
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-border/60">
@@ -976,7 +1030,7 @@ export default function StandUpFurtkaPage() {
             <p className="text-[14px] md:text-[15px] text-neutral-800 text-center">
               Furtka Stand Up wykorzystuje pionowy układ profili aluminiowych,
               dzięki czemu bez problemu łączy się z przęsłami, bramą przesuwną
-              i dwuskrzydłową z tej samej kolekcji. Wersja prosta podkreśla
+              i dwuskrzydłową z tej sameej kolekcji. Wersja prosta podkreśla
               pionowy rytm i minimalizm, natomiast Twist – poprzez obrót
               lameli – daje efekt lekkiej żaluzji i większej prywatności. Cała
               konstrukcja jest spawana, szlifowana i malowana proszkowo, co
@@ -985,20 +1039,20 @@ export default function StandUpFurtkaPage() {
             </p>
           </section>
 
-         <section className="space-y-3">
-  <h2 className="text-[5px] md:text-[10px] font-bold text-accent text-center">
-    Rysunek techniczny furtki Stand Up
-  </h2>
+          <section className="space-y-3">
+            <h2 className="text-[5px] md:text-[10px] font-bold text-accent text-center">
+              Rysunek techniczny furtki Stand Up
+            </h2>
 
-  <div className="relative mx-auto w-full max-w-5xl aspect-[77/54] rounded-3xl overflow-hidden shadow-soft bg-white/70">
-    <Image
-      src="/products/standup-furtka-tech.png"
-      alt="Rysunek techniczny furtki Stand Up"
-      fill
-      className="object-contain object-center"
-    />
-  </div>
-</section>
+            <div className="relative mx-auto w-full max-w-5xl aspect-[77/54] rounded-3xl overflow-hidden shadow-soft bg-white/70">
+              <Image
+                src="/products/standup-furtka-tech.png"
+                alt="Rysunek techniczny furtki Stand Up"
+                fill
+                className="object-contain object-center"
+              />
+            </div>
+          </section>
 
           <section className="grid gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start">
             <div className="space-y-3">
@@ -1059,7 +1113,9 @@ export default function StandUpFurtkaPage() {
               rel="noreferrer"
               className="rounded-3xl bg-accent border border-border p-4 shadow-soft hover:border-accent hover:text-accent transition-colors"
             >
-              <p className="font-bold mb-1 uppercase text-center text-white">Paleta kolorów RAL</p>
+              <p className="font-bold mb-1 uppercase text-center text-white">
+                Paleta kolorów RAL
+              </p>
               <p className="text-white text-center">
                 Przybliżona prezentacja kolorów RAL – pomocna przy wyborze
                 odcienia furtki i bramy.
@@ -1081,7 +1137,9 @@ export default function StandUpFurtkaPage() {
               href="/warunki-gwarancji"
               className="rounded-3xl bg-accent border border-border p-4 shadow-soft hover:border-accent hover:text-accent transition-colors"
             >
-              <p className="font-bold mb-1 uppercase text-center text-white">Warunki gwarancji</p>
+              <p className="font-bold mb-1 uppercase text-center text-white">
+                Warunki gwarancji
+              </p>
               <p className="text-neutral-700 text-center text-white">
                 Szczegóły gwarancji na konstrukcje aluminiowe i stalowe NAGET.
               </p>

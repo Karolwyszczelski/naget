@@ -316,7 +316,7 @@ export default function SlabFenceBramaDwuskrzydlowaPage() {
               stanowią płyty fasadowe HPL w dekorach Trespa. W standardzie
               otrzymujesz{" "}
               <strong>
-                2 słupy 100×100×2&nbsp;mm, zawiasy regulowane oraz zamek
+                2 słupy 100×100×2&nbsp;mm, zawiasy regulowane.
               </strong>
               , z możliwością przygotowania pod automatykę.
             </p>
