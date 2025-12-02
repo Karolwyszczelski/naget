@@ -1,4 +1,4 @@
-// app/stand-up/zadaszenie/page.tsx
+// app/stand-up/zadaszenie/page.tsx 
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -88,6 +88,59 @@ type StepDef = {
 
 type ColorMode = "standard" | "custom";
 
+// UPSSELL – jak przy bramach/furtce
+const upsellItems = [
+  {
+    id: "upsell-furtka",
+    name: "Furtka Stand Up",
+    description:
+      "Furtka w tym samym rytmie profili i kolorze, co zadaszenie – spójna oś wejścia.",
+    href: "/stand-up/furtka",
+    image: "/products/standup-furtka-prosta-main.jpg",
+    badge: "Furtka",
+  },
+  {
+    id: "upsell-brama-przesuwna",
+    name: "Brama przesuwna Stand Up",
+    description:
+      "Brama wjazdowa w serii Stand Up – dopasowana do furtki, zadaszenia i ogrodzenia.",
+    href: "/stand-up/brama-przesuwna",
+    image: "/products/standup-brama.png",
+    badge: "Brama przesuwna",
+  },
+  {
+    id: "upsell-slup-multimedialny",
+    name: "Słupek multimedialny Stand Up",
+    description:
+      "Słupek pod wideodomofon, skrzynkę i automatykę – w tej samej linii co zadaszenie.",
+    href: "/stand-up/slupek-multimedialny",
+    image: "/products/standup-slup-multimedialny.jpg", // podmień, jeśli masz inną nazwę pliku
+    badge: "Słupek multimedialny",
+  },
+  {
+    id: "upsell-brama",
+    name: "Brama Przesuwna Stand Up",
+    description:
+      "Brama w tym samym rytmie profili co furtka – skonfiguruj w tej samej serii.",
+    href: "/stand-up/brama-przesuwna",
+    image: "/products/brama-stand-przesuwna.png",
+    badge: "Brama Przesuwna",
+  },
+];
+
+// ZDJĘCIA PROSTA / TWIST – podmień ścieżki na swoje finalne pliki
+const variantImages: Record<"prosta" | "twist", string[]> = {
+  prosta: [
+    "/products/standup-zadaszenie-proste-main.jpg",
+    "/products/standup-zadaszenie-proste-detail-1.webp",
+    "/products/standup-zadaszenie-proste-detail-2.jpg",
+  ],
+  twist: [
+    "/products/standup-zadaszenie-twist-main.jpg",
+    "/products/standup-zadaszenie-twist-detail-1.jpg",
+  ],
+};
+
 export default function StandUpZadaszeniePage() {
   const { addItem } = useCart();
 
@@ -129,15 +182,27 @@ export default function StandUpZadaszeniePage() {
   // ILOŚĆ
   const [quantity, setQuantity] = useState(1);
 
+  // PODGLĄD: model 3D / zdjęcia
+  const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
+
   const selectedProfile =
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    const allowed =
+    let allowed =
       spacingOptionsByProfile[selectedProfile.id] ??
       spacingOptionsBase.map((s) => s.id);
+
+    // DLA TWIST + profili 80×40 / 80×80 – TYLKO rozstaw 6 cm (spójnie z furtką/bramami)
+    if (
+      fillType === "twist" &&
+      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
+    ) {
+      allowed = ["6"];
+    }
+
     return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id]);
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
     const allowedIds = availableSpacingOptions.map((s) => s.id);
@@ -145,6 +210,11 @@ export default function StandUpZadaszeniePage() {
       setSpacingId(allowedIds[0] as "4" | "6" | "9");
     }
   }, [availableSpacingOptions, spacingId]);
+
+  // po zmianie PROSTA/TWIST reset na model 3D
+  useEffect(() => {
+    setActiveImageSrc(null);
+  }, [fillType]);
 
   const selectedSpacing =
     availableSpacingOptions.find((s) => s.id === spacingId) ??
@@ -159,6 +229,12 @@ export default function StandUpZadaszeniePage() {
   const previewColorHex =
     colorMode === "standard" ? selectedBaseColor.hex : "#383E4A";
   const twistAngle = twistAnglesByProfile[selectedProfile.id];
+
+  const thumbs = variantImages[fillType];
+  const activeImageAlt =
+    fillType === "prosta"
+      ? "Zadaszenie nad furtkę Stand Up – wersja prosta"
+      : "Zadaszenie nad furtkę Stand Up Twist – wizualizacja";
 
   // CENA
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
@@ -282,21 +358,73 @@ export default function StandUpZadaszeniePage() {
 
           {/* 2 KOLUMNY – MODEL + KONFIGURATOR */}
           <div className="grid gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)] items-start">
-            {/* LEWO – MODEL 3D */}
+            {/* LEWO – MODEL 3D / ZDJĘCIA */}
             <div className="space-y-4">
-              <ZadaszenieModel
-                colorHex={previewColorHex}
-                finish={finishId}
-                profileId={profileId}
-                spacingId={spacingId}
-                fillType={fillType}
-              />
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-soft bg-transparent">
+                {activeImageSrc ? (
+                  <div className="relative w-full aspect-[4/3]">
+                    <Image
+                      src={activeImageSrc}
+                      alt={activeImageAlt}
+                      fill
+                      className="object-cover object-center"
+                    />
+                  </div>
+                ) : (
+                  <ZadaszenieModel
+                    colorHex={previewColorHex}
+                    finish={finishId}
+                    profileId={profileId}
+                    spacingId={spacingId}
+                    fillType={fillType}
+                  />
+                )}
+
+                {activeImageSrc && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveImageSrc(null)}
+                    className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary shadow-soft hover:bg-white"
+                  >
+                    Pokaż model 3D
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {thumbs.map((src, idx) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setActiveImageSrc(src)}
+                    className="relative h-28 rounded-2xl overflow-hidden shadow-soft bg-transparent"
+                  >
+                    <Image
+                      src={src}
+                      alt={
+                        fillType === "prosta"
+                          ? `Zadaszenie Stand Up Prosty – widok / detal ${
+                              idx + 1
+                            }`
+                          : `Zadaszenie Stand Up Twist – widok / detal ${
+                              idx + 1
+                            }`
+                      }
+                      fill
+                      className="object-cover object-center"
+                    />
+                    <span className="absolute left-2 bottom-2 rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      {fillType === "prosta" ? "Prosty" : "Twist"}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
               <p className="text-[11px] text-neutral-600">
                 Podgląd prezentuje zadaszenie dla szerokości{" "}
                 <strong>120 cm</strong> i głębokości <strong>100 cm</strong>.
                 Wysokość słupów wynosi <strong>240 cm</strong>, co sprawdza się
-                przy standardowych wysokościach ogrodzenia. Wypełnienie tylne
+                przy standardowych wysokościach ogrodzenia. Tylne wypełnienie
                 jest z tych samych profili co furtka i przęsła.
               </p>
             </div>
@@ -646,7 +774,7 @@ export default function StandUpZadaszeniePage() {
                 </section>
               )}
 
-              {/* KROK 5 – ILOŚĆ + PODSUMOWANIE */}
+              {/* KROK 5 – ILOŚĆ + PODSUMOWANIE + UPSELL */}
               {step === 5 && (
                 <section className="space-y-5 border-t border-border/60 pt-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
@@ -701,42 +829,57 @@ export default function StandUpZadaszeniePage() {
                     </div>
                   </div>
 
+                  {/* UPSELL KARTY – jak przy bramach/furtce */}
                   <div className="mt-2 space-y-3 rounded-2xl bg-neutral-50/80 border border-border/70 p-3 md:p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                      Do kompletu w serii Stand Up
+                      Najczęściej zamawiane z zadaszeniem Stand Up
                     </p>
                     <p className="text-[12px] text-neutral-700">
                       Zadaszenie zwykle zamawiane jest razem z furtką, bramą
-                      przesuwną oraz ewentualnym słupkiem multimedialnym. Po
-                      dodaniu zadaszenia do koszyka możesz przejść do
-                      konfiguratorów pozostałych produktów.
+                      wjazdową oraz słupkiem multimedialnym. Poniżej możesz
+                      przejść bezpośrednio do ich konfiguratorów.
                     </p>
 
-                    <div className="grid gap-3 md:grid-cols-2 text-[11px]">
-                      <Link
-                        href="/stand-up/furtka"
-                        className="rounded-2xl bg-white/90 border border-border/70 p-3 hover:border-accent hover:text-accent transition-colors"
-                      >
-                        <p className="font-semibold text-primary">
-                          Furtka Stand Up
-                        </p>
-                        <p className="text-neutral-700">
-                          Furtka w tym samym rytmie profili i kolorze, co
-                          zadaszenie.
-                        </p>
-                      </Link>
-                      <Link
-                        href="/stand-up/brama-przesuwna"
-                        className="rounded-2xl bg-white/90 border border-border/70 p-3 hover:border-accent hover:text-accent transition-colors"
-                      >
-                        <p className="font-semibold text-primary">
-                          Brama przesuwna Stand Up
-                        </p>
-                        <p className="text-neutral-700">
-                          Brama w serii Stand Up – dopasowana do furtki i
-                          zadaszenia.
-                        </p>
-                      </Link>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {upsellItems.map((item) => (
+                        <article
+                          key={item.id}
+                          className="flex gap-3 rounded-2xl bg-white/90 border border-border/70 p-3"
+                        >
+                          {item.image && (
+                            <div className="relative h-16 w-16 flex-shrink-0 rounded-xl overflow-hidden bg-neutral-100">
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                fill
+                                className="object-cover object-center"
+                              />
+                              {item.badge && (
+                                <span className="absolute left-1 bottom-1 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-primary">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex-1 flex flex-col gap-1">
+                            <h3 className="text-[13px] font-semibold text-primary">
+                              {item.name}
+                            </h3>
+                            <p className="text-[11px] text-neutral-700">
+                              {item.description}
+                            </p>
+                            <div className="mt-1">
+                              <Link
+                                href={item.href}
+                                className="inline-flex items-center justify-center rounded-2xl border border-accent text-accent text-[10px] font-semibold uppercase tracking-[0.18em] px-3 py-1 hover:bg-accent hover:text-white transition-colors"
+                              >
+                                Otwórz konfigurator
+                              </Link>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </div>
                 </section>
@@ -809,7 +952,7 @@ export default function StandUpZadaszeniePage() {
             </div>
             <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-soft bg-neutral-100">
               <Image
-                src="/products/standup-zadaszenie-detail.jpg"
+                src="/products/standup-zadaszenie-proste-detail-1.webp"
                 alt="Zadaszenie nad furtkę Stand Up – wizualizacja"
                 fill
                 className="object-cover object-center"

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "../../../CartContext";
 import HeroSlider from "../../../components/HeroSlider";
-import BramaPrzesuwnaModel from "../../../components/BramaPrzesuwnaModel";
+import BramaDwuskrzydlowaModel from "../../../components/BramaDwuskrzydlowaModel";
 import type { IconType } from "react-icons";
 import {
   FaBorderAll,
@@ -21,10 +21,10 @@ import {
  * ----------------------------------------------------
  */
 
-// orientacyjna cena bazowa bramy przesuwnej
-const basePrice = 11000;
+// orientacyjna cena bazowa bramy dwuskrzydłowej
+const basePrice = 9500;
 
-// standardowe wysokości / szerokości (światło bramy w mm)
+// standardowe wysokości / szerokości (światło w cm)
 const standardHeights = [
   { id: "140", label: "140 cm" },
   { id: "150", label: "150 cm" },
@@ -38,7 +38,7 @@ const standardWidths = [
   { id: "600", label: "600 cm (6000 mm)" },
 ];
 
-// profile wypełnienia – jak w furtce
+// profile wypełnienia – jak w furtce / bramie przesuwnej
 const profiles = [
   { id: "60x40", label: "Profil 60×40 mm", factor: 1.0 },
   { id: "80x40", label: "Profil 80×40 mm", factor: 1.07 },
@@ -103,17 +103,16 @@ type StepDef = {
   icon: IconType;
 };
 
-// zdjęcia dla PROSTEJ i TWIST – podmień ścieżki na swoje, gdy będziesz mieć finalne pliki
+// ZDJĘCIA PROSTA / TWIST – podmień ścieżki na swoje finalne pliki
 const variantImages: Record<"prosta" | "twist", string[]> = {
   prosta: [
-    "/products/brama-stand-przesuwna.jpeg", // główny widok
-    "/products/standup-brama-detail-1.jpg",
-    "/products/standup-brama-detail-2.jpg",
+    "/products/brama-dwuskrzydlowa-standup.webp",
+    "/products/brama-dwuskrzydlowa-standup-detail-1.jpg",
+    "/products/brama-dwuskrzydlowa-standup-detail-2.jpg",
   ],
   twist: [
-    "/products/brama-stand-przesuwna-twist.jpeg", // jeśli nie masz, może na razie wskazywać na ten sam plik co prosta
-    "/products/standup-brama-twist-detail-1.jpg",
-    "/products/standup-brama-twist-detail-2.jpg",
+    "/products/brama-dwuskrzydlowa-standup-twist.webp",
+    "/products/brama-dwuskrzydlowa-standup-twist-detail-1.jpg",
   ],
 };
 
@@ -128,26 +127,44 @@ const upsellItems = [
     badge: "Furtka",
   },
   {
+    id: "upsell-brama",
+    name: "Brama Przesuwna Stand Up",
+    description:
+      "Brama w tym samym rytmie profili co furtka – skonfiguruj w tej samej serii.",
+    href: "/stand-up/brama-przesuwna",
+    image: "/products/brama-stand-przesuwna.png",
+    badge: "Brama Przesuwna",
+  },
+  {
     id: "upsell-zadaszenie",
     name: "Zadaszenie nad furtkę Stand Up",
     description:
-      "Zadaszenie wejścia dopasowane do serii Stand Up – ochrona przed deszczem i śniegiem.",
+      "Zadaszenie wejścia dopasowane do profili furtki – ochrona przed deszczem i śniegiem.",
     href: "/stand-up/zadaszenie",
-    image: "/products/zadaszenie-stand.png",
+    image: "/products/standup-zadaszenie.gif",
     badge: "Zadaszenie",
   },
   {
-    id: "upsell-automat",
-    name: "Automatyka do bramy przesuwnej",
+    id: "upsell-slup",
+    name: "Słupek multimedialny Stand Up",
     description:
-      "Napędy, fotokomórki i akcesoria dobrane do bram przesuwnych Naget.",
+      "Miejsce na skrzynkę, wideodomofon i automatykę – spójne z linią Stand Up.",
+    href: "/stand-up/slupek-multimedialny",
+    image: undefined,
+    badge: "Słupek multimedialny",
+  },
+  {
+    id: "upsell-automat",
+    name: "Automatyka do bramy",
+    description:
+      "Napędy, fotokomórki i akcesoria dobrane do bram Naget – wygodne sterowanie.",
     href: "/dodatki/automatyka",
     image: "/products/addons-automat.png",
     badge: "Automatyka",
   },
 ];
 
-export default function StandUpBramaPrzesuwnaPage() {
+export default function StandUpBramaDwuskrzydlowaPage() {
   const { addItem } = useCart();
 
   // krok w konfiguratorze
@@ -196,7 +213,7 @@ export default function StandUpBramaPrzesuwnaPage() {
   // ilość
   const [quantity, setQuantity] = useState(1);
 
-  // aktywny widok w galerii (null = model 3D, string = ścieżka zdjęcia)
+  // aktywny widok: null = model 3D, string = ścieżka zdjęcia
   const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
 
   const selectedHeight =
@@ -207,11 +224,20 @@ export default function StandUpBramaPrzesuwnaPage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    const allowed =
+    let allowed =
       spacingOptionsByProfile[selectedProfile.id] ??
       spacingOptionsBase.map((s) => s.id);
+
+    // DLA TWIST + profili 80×40 / 80×80 – TYLKO rozstaw 6 cm (jak w furtce)
+    if (
+      fillType === "twist" &&
+      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
+    ) {
+      allowed = ["6"];
+    }
+
     return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id]);
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
     const allowedIds = availableSpacingOptions.map((s) => s.id);
@@ -220,7 +246,7 @@ export default function StandUpBramaPrzesuwnaPage() {
     }
   }, [availableSpacingOptions, spacingId]);
 
-  // reset widoku na model 3D po zmianie PROSTA/TWIST
+  // po zmianie PROSTA/TWIST wracamy do modelu 3D
   useEffect(() => {
     setActiveImageSrc(null);
   }, [fillType]);
@@ -235,11 +261,19 @@ export default function StandUpBramaPrzesuwnaPage() {
   const selectedFinish =
     finishOptions.find((f) => f.id === finishId) ?? finishOptions[0];
 
-  // kolor do podglądu (3D)
+  // kolor do podglądu
   const previewColorHex =
     colorMode === "standard" ? selectedBaseColor.hex : "#383E4A";
 
-  // KALKULACJA CENY – podobnie jak w furtce, ale mocniej reaguje na szerokość
+  const twistAngle = twistAnglesByProfile[profileId];
+
+  const thumbs = variantImages[fillType];
+  const activeImageAlt =
+    fillType === "prosta"
+      ? "Brama dwuskrzydłowa Stand Up – widok prosty"
+      : "Brama dwuskrzydłowa Stand Up Twist – widok";
+
+  // KALKULACJA CENY – lekko mniejszy wpływ szerokości niż przy przesuwnej
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
     let factor = 1.0;
 
@@ -247,20 +281,17 @@ export default function StandUpBramaPrzesuwnaPage() {
     factor *= selectedSpacing.factor;
     factor *= selectedFinish.factor;
 
-    // wpływ wymiarów
     if (variant === "standard") {
       const h = Number(selectedHeight.id); // cm
       const w = Number(selectedWidth.id); // cm
-      const areaFactor =
-        (h / 150) * 0.5 + (w / 500) * 0.6; // brama mocniej zależy od szerokości
+      const areaFactor = (h / 150) * 0.45 + (w / 500) * 0.5;
       factor *= 1 + areaFactor * 0.12;
     } else {
       const h = typeof customHeight === "number" ? customHeight : 0;
       const w = typeof customWidth === "number" ? customWidth : 0;
       if (h && w) {
-        const areaFactor =
-          (h / 150) * 0.5 + (w / 500) * 0.6;
-        factor *= 1 + areaFactor * 0.14;
+        const areaFactor = (h / 150) * 0.45 + (w / 500) * 0.5;
+        factor *= 1 + areaFactor * 0.13;
       }
     }
 
@@ -334,8 +365,8 @@ export default function StandUpBramaPrzesuwnaPage() {
         : customRalCode || "custom-ral";
 
     addItem({
-      productId: "standup-brama",
-      name: "Brama przesuwna Stand Up",
+      productId: "standup-brama-dwuskrzydlowa",
+      name: "Brama dwuskrzydłowa Stand Up",
       series: "stand-up",
       unitPrice,
       quantity: Math.max(quantity, 1),
@@ -359,14 +390,6 @@ export default function StandUpBramaPrzesuwnaPage() {
     });
   };
 
-  const twistAngle = twistAnglesByProfile[profileId];
-
-  const thumbs = variantImages[fillType].slice(1);
-  const activeImageAlt =
-    fillType === "prosta"
-      ? "Brama przesuwna Stand Up – widok prosty"
-      : "Brama przesuwna Stand Up Twist – widok";
-
   return (
     <>
       {/* SEKCJA GŁÓWNA PRODUKTU */}
@@ -375,22 +398,23 @@ export default function StandUpBramaPrzesuwnaPage() {
           {/* META / INTRO */}
           <header className="space-y-3">
             <p className="text-[11px] uppercase tracking-[0.24em] text-neutral-500">
-              Seria Stand Up – brama przesuwna
+              Seria Stand Up – brama dwuskrzydłowa
             </p>
             <h1 className="text-[26px] md:text-[40px] font-extrabold text-accent uppercase">
-              Brama przesuwna Stand Up – prosta i Twist
+              Brama dwuskrzydłowa Stand Up – prosta i Twist
             </h1>
             <p className="text-[14px] md:text-[15px] text-neutral-800 max-w-3xl">
-              Brama przesuwna z pionowych profili dopasowana do ogrodzenia
+              Brama dwuskrzydłowa z pionowych profili dopasowana do ogrodzeń
               Stand Up. Dostępna w wersji prostej i TWIST, w standardowych
-              szerokościach 4000 / 5000 / 6000 mm oraz na wymiar. W komplecie
-              słupy, wózki, rolki i najazd – gotowa do montażu z automatyką.
+              szerokościach 4000 / 5000 / 6000 mm oraz na wymiar. W komplecie{" "}
+              <strong>2 słupy 100×100×2 mm, zawiasy regulowane.</strong> – gotowa
+              do zintegrowania z automatyką.
             </p>
           </header>
 
           {/* UKŁAD 2 KOLUMN: PODGLĄD (3D / FOTO) + KONFIGURATOR */}
           <div className="grid gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)] items-start">
-            {/* LEWA – MODEL 3D / ZDJĘCIE + MINIATURY */}
+            {/* LEWA – MODEL 3D / ZDJĘCIA */}
             <div className="space-y-4">
               <div className="relative w-full rounded-3xl overflow-hidden shadow-soft bg-transparent">
                 {activeImageSrc ? (
@@ -403,7 +427,7 @@ export default function StandUpBramaPrzesuwnaPage() {
                     />
                   </div>
                 ) : (
-                  <BramaPrzesuwnaModel
+                  <BramaDwuskrzydlowaModel
                     colorHex={previewColorHex}
                     finish={finishId}
                     profileId={profileId}
@@ -435,8 +459,8 @@ export default function StandUpBramaPrzesuwnaPage() {
                       src={src}
                       alt={
                         fillType === "prosta"
-                          ? `Detal bramy przesuwnej Stand Up prostej ${idx + 1}`
-                          : `Detal bramy przesuwnej Stand Up Twist ${idx + 1}`
+                          ? `Brama dwuskrzydłowa Stand Up prosta – widok / detal ${idx + 1}`
+                          : `Brama dwuskrzydłowa Stand Up Twist – widok / detal ${idx + 1}`
                       }
                       fill
                       className="object-cover object-center"
@@ -452,13 +476,13 @@ export default function StandUpBramaPrzesuwnaPage() {
                 <p>
                   W standardzie:{" "}
                   <strong>
-                    2 słupy 80×80×2 mm, wózki jezdne, najazd, rolki prowadzące
-                  </strong>
-                  . Konstrukcja przygotowana pod montaż automatyki.
+                    2 słupy 100×100×2 mm, zawiasy regulowane, zamek.
+                  </strong>{" "}
+                  Konstrukcja przygotowana pod montaż automatyki skrzydłowej.
                 </p>
                 <p className="text-[11px] text-neutral-500">
-                  Podgląd ma charakter poglądowy – kluczowe są parametry
-                  z konfiguratora oraz dokumentacja techniczna.
+                  Podgląd (3D i zdjęcia) ma charakter poglądowy – wiążące są
+                  parametry konfiguratora oraz dokumentacja techniczna.
                 </p>
               </div>
             </div>
@@ -466,7 +490,7 @@ export default function StandUpBramaPrzesuwnaPage() {
             {/* PRAWA – WIZARD KROK-PO-KROKU */}
             <div className="rounded-3xl border border-border bg-white/80 p-5 md:p-6 space-y-6 shadow-soft">
               <h2 className="text-[18px] md:text-[20px] font-bold text-primary mb-1">
-                Konfigurator bramy przesuwnej Stand Up
+                Konfigurator bramy dwuskrzydłowej Stand Up
               </h2>
 
               {/* Pasek kroków – ikonki + strzałki */}
@@ -563,10 +587,10 @@ export default function StandUpBramaPrzesuwnaPage() {
                         : "Twist – efekt żaluzji:"}
                     </strong>{" "}
                     {fillType === "prosta"
-                      ? "pionowe profile ustawione równolegle – maksymalny minimalizm i czytelny rytm na całej długości bramy."
+                      ? "pionowe profile ustawione równolegle tworzą spokojny, rytmiczny front na całej szerokości obu skrzydeł."
                       : `lamelki są obrócone pod kątem ${
                           twistAngle ?? 45
-                        }° względem osi profilu, co zwiększa prywatność przy zachowaniu lekkiej, pionowej formy.`}
+                        }° względem osi profilu, co zwiększa prywatność przy zachowaniu lekkiej pionowej formy.`}
                   </p>
                 </section>
               )}
@@ -633,9 +657,8 @@ export default function StandUpBramaPrzesuwnaPage() {
                         ))}
                       </div>
                       <p className="mt-1 text-[11px] text-neutral-500">
-                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm.
-                        Gęstsze i rzadsze rozstawy traktujemy jako warianty
-                        projektowe.
+                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm. Gęstsze
+                        i rzadsze rozstawy traktujemy jako warianty projektowe.
                       </p>
                     </div>
                   </div>
@@ -698,7 +721,7 @@ export default function StandUpBramaPrzesuwnaPage() {
                       </div>
                       <div>
                         <p className="text-[12px] font-semibold text-primary mb-1">
-                          Szerokość światła bramy
+                          Szerokość światła bramy (obydwa skrzydła)
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {standardWidths.map((w) => (
@@ -763,7 +786,7 @@ export default function StandUpBramaPrzesuwnaPage() {
                         />
                         <p className="mt-1 text-[11px] text-neutral-500">
                           Standardowo oferujemy 4000 / 5000 / 6000 mm światła,
-                          ale możemy przygotować inne szerokości.
+                          inne szerokości realizujemy na zamówienie.
                         </p>
                       </div>
                     </div>
@@ -826,7 +849,7 @@ export default function StandUpBramaPrzesuwnaPage() {
                       />
                       <p className="text-[11px] text-neutral-500">
                         Możliwe wszystkie kolory z palety RAL. Dopłata zależy
-                        od odcienia i struktury.
+                        od wybranego odcienia i struktury.
                       </p>
 
                       <Link
@@ -919,7 +942,7 @@ export default function StandUpBramaPrzesuwnaPage() {
                         Uwzględniamy profil, rozstaw, wariant Prosty/Twist,
                         kolor RAL, strukturę oraz wymiar bramy. Cena ma
                         charakter orientacyjny – wiążącą wycenę prześlemy po
-                        weryfikacji projektu.
+                        weryfikacji projektu i sposobu montażu.
                       </p>
                     </div>
                     <div className="text-right">
@@ -932,15 +955,16 @@ export default function StandUpBramaPrzesuwnaPage() {
                     </div>
                   </div>
 
-                  {/* DODATKI / UZUPLENIENIA */}
+                  {/* DODATKI / UZUPEŁNIENIA */}
                   <div className="mt-2 space-y-3 rounded-2xl bg-neutral-50/80 border border-border/70 p-3 md:p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                      Najczęściej zamawiane z bramą Stand Up
+                      Najczęściej zamawiane z bramą dwuskrzydłową Stand Up
                     </p>
                     <p className="text-[12px] text-neutral-700">
-                      Do bramy przesuwnej zwykle dobierana jest furtka w tym
-                      samym wzorze, zadaszenie wejścia oraz komplet automatyki.
-                      Możesz przejść do ich konfiguratorów jednym kliknięciem.
+                      Do bramy dwuskrzydłowej zwykle dobierana jest furtka,
+                      przęsła w tym samym rytmie profili oraz komplet
+                      automatyki. Możesz przejść do ich konfiguratorów jednym
+                      kliknięciem.
                     </p>
 
                     <div className="grid gap-3 md:grid-cols-2">
@@ -1027,15 +1051,15 @@ export default function StandUpBramaPrzesuwnaPage() {
           {/* OPISY POD KONFIGURATOREM */}
           <section className="space-y-3">
             <h2 className="text-[20px] md:text-[30px] font-extrabold text-accent uppercase text-center">
-              Jak działa system Stand Up przy bramie przesuwnej?
+              Jak działa system Stand Up przy bramie dwuskrzydłowej?
             </h2>
             <p className="text-[14px] md:text-[15px] text-neutral-800 text-center">
-              Brama Stand Up wykorzystuje pionowy układ profili dopasowany do
-              furtki i przęseł z tej samej kolekcji. Wersja prosta podkreśla
-              rytm ogrodzenia, a Twist – dzięki obrotowi lameli – podnosi
-              poziom prywatności. Konstrukcja jest spawana, szlifowana i
-              malowana proszkowo, co zapewnia wieloletnią trwałość bez
-              konieczności odnawiania powłoki.
+              Brama dwuskrzydłowa Stand Up zachowuje ten sam pionowy rytm
+              profili co furtka, przęsła i brama przesuwna z serii. Wersja
+              prosta akcentuje minimalizm, natomiast Twist – dzięki obrotowi
+              lameli – zwiększa prywatność strefy wejściowej. Całość jest
+              spawana, szlifowana i malowana proszkowo, co zapewnia wieloletnią
+              trwałość bez konieczności odnawiania powłoki.
             </p>
           </section>
 
@@ -1047,7 +1071,7 @@ export default function StandUpBramaPrzesuwnaPage() {
             <div className="relative mx-auto w-full max-w-5xl aspect-[77/54] rounded-3xl overflow-hidden shadow-soft bg-white/70">
               <Image
                 src="/products/standup-furtka-tech.png"
-                alt="Rysunek techniczny bramy przesuwnej Stand Up"
+                alt="Rysunek techniczny bramy dwuskrzydłowej Stand Up"
                 fill
                 className="object-contain object-center"
               />
@@ -1060,18 +1084,18 @@ export default function StandUpBramaPrzesuwnaPage() {
                 Montaż i integracja z ogrodzeniem
               </h2>
               <p className="text-[14px] md:text-[15px] text-neutral-800">
-                Brama przesuwna Stand Up łączy się z furtką, przęsłami,
-                zadaszeniem i słupkiem multimedialnym. Konstrukcja przygotowana
-                jest pod montaż automatyki, fotokomórek i akcesoriów
-                bezpieczeństwa. Spójne wymiary i profile ułatwiają pracę ekipie
-                montażowej i pozwalają zachować estetyczny, jednolity front
+                Brama dwuskrzydłowa Stand Up jest przygotowana do montażu na
+                słupach 100×100×2 mm, z regulowanymi zawiasami i zamkiem.
+                Można ją łączyć z furtką, przęsłami, zadaszeniem wejścia i
+                słupkiem multimedialnym. Spójne profile i rozstaw ułatwiają
+                pracę ekipie montażowej i pozwalają utrzymać jednolity front
                 posesji.
               </p>
             </div>
             <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-soft bg-transparent">
               <Image
                 src="/products/brama-dwuskrzydlowa-standup.webp"
-                alt="Brama przesuwna aluminiowa Stand Up"
+                alt="Brama dwuskrzydłowa Stand Up"
                 fill
                 className="object-cover object-center"
               />
@@ -1080,15 +1104,15 @@ export default function StandUpBramaPrzesuwnaPage() {
 
           <section className="space-y-3">
             <h2 className="text-[18px] md:text-[30px] font-extrabold text-accent uppercase">
-              Dla kogo jest brama Stand Up?
+              Dla kogo jest brama dwuskrzydłowa Stand Up?
             </h2>
             <p className="text-[14px] md:text-[15px] text-neutral-800">
-              Brama przesuwna Stand Up sprawdzi się przy nowoczesnych domach
-              jednorodzinnych, rezydencjach oraz inwestycjach premium, gdzie
-              liczy się spójność ogrodzenia, wygoda użytkowania i trwałość.
-              Konfigurator online pozwala zebrać wszystkie parametry potrzebne
-              do przygotowania wiążącej wyceny, doboru automatyki i
-              dokumentacji wykonawczej.
+              Ten model dobrze sprawdza się przy domach jednorodzinnych,
+              rezydencjach oraz inwestycjach, gdzie nie ma miejsca na bramę
+              przesuwną lub inwestor preferuje klasyczny podział na dwa
+              skrzydła. Konfigurator online pomaga zebrać wszystkie parametry
+              potrzebne do wyceny, doboru zawiasów, siłowników i osprzętu
+              automatyki.
             </p>
           </section>
         </div>
