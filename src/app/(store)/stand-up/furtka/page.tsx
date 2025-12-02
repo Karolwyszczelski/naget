@@ -15,7 +15,6 @@ import {
   FaPalette,
   FaClipboardCheck,
   FaChevronRight,
-  FaDoorOpen,
 } from "react-icons/fa";
 
 /**
@@ -73,7 +72,6 @@ const gatePricing = {
     },
   },
 } as const;
-
 
 // rozstaw (w przybliżeniu cm)
 const spacingOptionsBase = [
@@ -194,7 +192,6 @@ const upsellItems = [
     image: "/products/addons-drewutnie.png",
     badge: "Drewutnie",
   },
-
 ];
 
 type HandleId = "none" | "1" | "2" | "3" | "4" | "5" | "6";
@@ -272,19 +269,19 @@ export default function StandUpFurtkaPage() {
   const [step, setStep] = useState<Step>(1);
 
   const handleNextStep = () =>
-  setStep((prev) => (prev < 6 ? ((prev + 1) as Step) : prev));
+    setStep((prev) => (prev < 6 ? ((prev + 1) as Step) : prev));
 
   const handlePrevStep = () =>
     setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
 
   const steps: StepDef[] = [
-  { id: 1, label: "Wypełnienie", icon: FaBorderAll },
-  { id: 2, label: "Profil i rozstaw", icon: FaSlidersH },
-  { id: 3, label: "Wymiary", icon: FaRulerCombined },
-  { id: 4, label: "Pochwyt", icon: FaBorderAll },
-  { id: 5, label: "Kolor i struktura", icon: FaPalette },
-  { id: 6, label: "Podsumowanie", icon: FaClipboardCheck },
-];
+    { id: 1, label: "Wypełnienie", icon: FaBorderAll },
+    { id: 2, label: "Profil i rozstaw", icon: FaSlidersH },
+    { id: 3, label: "Wymiary", icon: FaRulerCombined },
+    { id: 4, label: "Pochwyt", icon: FaBorderAll },
+    { id: 5, label: "Kolor i struktura", icon: FaPalette },
+    { id: 6, label: "Podsumowanie", icon: FaClipboardCheck },
+  ];
 
   // tryb wymiarów
   const [variant, setVariant] = useState<"standard" | "custom">("standard");
@@ -305,18 +302,17 @@ export default function StandUpFurtkaPage() {
   const [spacingId, setSpacingId] = useState<"2" | "4" | "6" | "9">("6");
 
   // kolor RAL + struktura
- // kolor RAL + struktura
-const [colorMode, setColorMode] = useState<"standard" | "custom">("standard");
-const [colorId, setColorId] = useState<string>(baseColors[0].id);
-const [customRalCode, setCustomRalCode] = useState<string>("");
-const [finishId, setFinishId] = useState<FinishId>("mat");
+  const [colorMode, setColorMode] = useState<"standard" | "custom">("standard");
+  const [colorId, setColorId] = useState<string>(baseColors[0].id);
+  const [customRalCode, setCustomRalCode] = useState<string>("");
+  const [finishId, setFinishId] = useState<FinishId>("mat");
 
-// pochwyty
-const [handleId, setHandleId] = useState<HandleId>("none");
-const [handleMount, setHandleMount] = useState<HandleMount>("none");
+  // pochwyty
+  const [handleId, setHandleId] = useState<HandleId>("none");
+  const [handleMount, setHandleMount] = useState<HandleMount>("none");
 
-// ilość
-const [quantity, setQuantity] = useState(1);
+  // ilość
+  const [quantity, setQuantity] = useState(1);
 
   // aktywny widok w galerii (null = model 3D, string = ścieżka zdjęcia)
   const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
@@ -328,38 +324,38 @@ const [quantity, setQuantity] = useState(1);
   const selectedProfile =
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
-    const selectedHandle =
-  handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
-const selectedHandleMountLabel = handleMountLabels[handleMount];
+  const selectedHandle =
+    handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
+  const selectedHandleMountLabel = handleMountLabels[handleMount];
 
   const availableSpacingOptions = useMemo(() => {
-  // TWIST – osobna logika:
-  // 60×40 → tylko 2 cm
-  // 80×40 → tylko 2 cm
-  // 80×80 → tylko 6 cm
-  if (fillType === "twist") {
-    if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
-      return spacingOptionsBase.filter((s) => s.id === "2");
+    // TWIST – osobna logika:
+    // 60×40 → tylko 2 cm
+    // 80×40 → tylko 2 cm
+    // 80×80 → tylko 6 cm
+    if (fillType === "twist") {
+      if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
+        return spacingOptionsBase.filter((s) => s.id === "2");
+      }
+      if (selectedProfile.id === "80x80") {
+        return spacingOptionsBase.filter((s) => s.id === "6");
+      }
     }
-    if (selectedProfile.id === "80x80") {
-      return spacingOptionsBase.filter((s) => s.id === "6");
-    }
-  }
 
-  // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
-  const allowed =
-    spacingOptionsByProfile[selectedProfile.id] ??
-    spacingOptionsBase.map((s) => s.id);
+    // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
+    const allowed =
+      spacingOptionsByProfile[selectedProfile.id] ??
+      spacingOptionsBase.map((s) => s.id);
 
-  return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-}, [selectedProfile.id, fillType]);
+    return spacingOptionsBase.filter((s) => allowed.includes(s.id));
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
-  const allowedIds = availableSpacingOptions.map((s) => s.id);
-  if (!allowedIds.includes(spacingId)) {
-    setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
-  }
-}, [availableSpacingOptions, spacingId]);
+    const allowedIds = availableSpacingOptions.map((s) => s.id);
+    if (!allowedIds.includes(spacingId)) {
+      setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
+    }
+  }, [availableSpacingOptions, spacingId]);
 
   // przy zmianie PROSTA/TWIST resetujemy główne zdjęcie do modelu 3D
   useEffect(() => {
@@ -382,104 +378,111 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
 
   // KALKULACJA CENY
   const {
-  unitPrice,
-  priceLabel,
-  totalLabel,
-  handlePrice,
-  handlePriceLabel,
-} = useMemo(() => {
-  // 1. Podstawowa cena skrzydła furtki (bez pochwytów, bez dopłat)
-  const pricingForProfile = gatePricing[profileId as keyof typeof gatePricing];
+    unitPrice,
+    priceLabel,
+    totalLabel,
+    handlePrice,
+    handlePriceLabel,
+  } = useMemo(() => {
+    // 1. Podstawowa cena skrzydła furtki (bez pochwytów, bez dopłat)
+    const pricingForProfile =
+      gatePricing[profileId as keyof typeof gatePricing];
 
-  let leafBasePrice = basePrice;
+    let leafBasePrice = basePrice;
 
-  if (pricingForProfile) {
-    if (variant === "standard") {
-      const heightCm = Number(selectedHeight.id);
-      const widthCm = Number(selectedWidth.id);
+    if (pricingForProfile) {
+      if (variant === "standard") {
+        const heightCm = Number(selectedHeight.id);
+        const widthCm = Number(selectedWidth.id);
 
-      const widthPricing =
-        pricingForProfile.standard[widthCm as 100 | 120 | 150];
+        const widthPricing =
+          pricingForProfile.standard[widthCm as 100 | 120 | 150];
 
-      if (widthPricing) {
-        const heightKey = heightCm <= 120 ? "h120" : "h150Plus";
-        leafBasePrice =
-          heightKey === "h120" ? widthPricing.h120 : widthPricing.h150Plus;
-      }
-    } else {
-      // wariant "Na wymiar" – rozmiar niestandardowy, cena za mb szerokości
-      const h = typeof customHeight === "number" ? customHeight : 0;
-      const w = typeof customWidth === "number" ? customWidth : 0;
+        if (widthPricing) {
+          const heightKey = heightCm <= 120 ? "h120" : "h150Plus";
+          leafBasePrice =
+            heightKey === "h120" ? widthPricing.h120 : widthPricing.h150Plus;
+        }
+      } else {
+        // wariant "Na wymiar" – rozmiar niestandardowy, cena za mb szerokości
+        const h = typeof customHeight === "number" ? customHeight : 0;
+        const w = typeof customWidth === "number" ? customWidth : 0;
 
-      if (h && w) {
-        const runningMeters = w / 100; // szerokość w metrach (np. 130 cm = 1,3 mb)
-        leafBasePrice = Math.round(pricingForProfile.mbPrice * runningMeters);
+        if (h && w) {
+          const runningMeters = w / 100; // szerokość w metrach (np. 130 cm = 1,3 mb)
+          leafBasePrice = Math.round(pricingForProfile.mbPrice * runningMeters);
+        }
       }
     }
-  }
 
-  // 2. Dopłata za strukturę brokat +10% od ceny wyjściowej furtki (bez pochwytów)
-  if (selectedFinish.id === "brokat") {
-    leafBasePrice = Math.round(leafBasePrice * 1.1);
-  }
+    // 2. Dopłata za strukturę brokat +10% od ceny wyjściowej furtki (bez pochwytów)
+    if (selectedFinish.id === "brokat") {
+      leafBasePrice = Math.round(leafBasePrice * 1.1);
+    }
 
-  // 3. Dopłata za dowolny RAL (kolor custom)
-  if (colorMode === "custom") {
-    leafBasePrice = Math.round(leafBasePrice * 1.08);
-  }
+    // 3. Dopłata za dowolny RAL (kolor custom)
+    if (colorMode === "custom") {
+      leafBasePrice = Math.round(leafBasePrice * 1.08);
+    }
 
-  // 4. Dopłata za pochwyty – bez zmian
-  const handleConfig =
-    handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
+    // 4. Dopłata za pochwyty
+    const handleConfig =
+      handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
 
-  let handleBasePrice = 0;
-  if (handleConfig.id !== "none" && handleMount !== "none") {
-    const multiplier = handleMount === "both" ? 2 : 1;
-    handleBasePrice = handleConfig.price * multiplier;
-  }
+    let handleBasePrice = 0;
+    if (handleConfig.id !== "none" && handleMount !== "none") {
+      const multiplier = handleMount === "both" ? 2 : 1;
+      handleBasePrice = handleConfig.price * multiplier;
+    }
 
-  let price = leafBasePrice + handleBasePrice;
+    let price = leafBasePrice + handleBasePrice;
 
-  // awaryjny fallback, gdyby coś poszło nie tak
-  if (!Number.isFinite(price) || price <= 0) {
-    price = basePrice;
-  }
+// 5. Dopłata za zagęszczony rozstaw 4 cm: ok. +20% do ceny jednostkowej furtki
+if (spacingId === "4") {
+  price = Math.round(price * 1.2);
+}
 
-  const qty = Math.max(quantity, 1);
-  const total = price * qty;
+    // awaryjny fallback, gdyby coś poszło nie tak
+    if (!Number.isFinite(price) || price <= 0) {
+      price = basePrice;
+    }
 
-  return {
-    unitPrice: price,
-    priceLabel: price.toLocaleString("pl-PL", {
-      style: "currency",
-      currency: "PLN",
-    }),
-    totalLabel: total.toLocaleString("pl-PL", {
-      style: "currency",
-      currency: "PLN",
-    }),
-    handlePrice: handleBasePrice,
-    handlePriceLabel:
-      handleBasePrice > 0
-        ? handleBasePrice.toLocaleString("pl-PL", {
-            style: "currency",
-            currency: "PLN",
-          })
-        : "0,00 zł",
-  };
-}, [
-  variant,
-  heightId,
-  widthId,
-  customHeight,
-  customWidth,
-  profileId,
-  selectedFinish.id,
-  colorMode,
-  quantity,
-  handleId,
-  handleMount,
-]);
+    const qty = Math.max(quantity, 1);
+    const total = price * qty;
+
+    return {
+      unitPrice: price,
+      priceLabel: price.toLocaleString("pl-PL", {
+        style: "currency",
+        currency: "PLN",
+      }),
+      totalLabel: total.toLocaleString("pl-PL", {
+        style: "currency",
+        currency: "PLN",
+      }),
+      handlePrice: handleBasePrice,
+      handlePriceLabel:
+        handleBasePrice > 0
+          ? handleBasePrice.toLocaleString("pl-PL", {
+              style: "currency",
+              currency: "PLN",
+            })
+          : "0,00 zł",
+    };
+  }, [
+    variant,
+    heightId,
+    widthId,
+    customHeight,
+    customWidth,
+    profileId,
+    selectedFinish.id,
+    colorMode,
+    quantity,
+    handleId,
+    handleMount,
+    spacingId, // cena zależy od rozstawu
+  ]);
 
   // DODANIE DO KOSZYKA
   const handleAddToCart = () => {
@@ -511,15 +514,15 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
         ? selectedBaseColor.id
         : customRalCode || "custom-ral";
 
-        const effectiveHandle =
-    handleId !== "none" && handleMount !== "none"
-      ? selectedHandle
-      : handleOptions[0];
+    const effectiveHandle =
+      handleId !== "none" && handleMount !== "none"
+        ? selectedHandle
+        : handleOptions[0];
 
-  const handleCartLabel =
-    handleId !== "none" && handleMount !== "none"
-      ? `${effectiveHandle.shortLabel} (${handleMountLabels[handleMount]})`
-      : "Bez pochwytu";
+    const handleCartLabel =
+      handleId !== "none" && handleMount !== "none"
+        ? `${effectiveHandle.shortLabel} (${handleMountLabels[handleMount]})`
+        : "Bez pochwytu";
 
     addItem({
       productId: "standup-furtka",
@@ -545,11 +548,11 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
         finishLabel: selectedFinish.label,
 
         // pochwyty
-      handleId,
-      handleLabel: handleCartLabel,
-      handleMount,
-      handleUnitPrice: effectiveHandle.price,
-      handlePrice,
+        handleId,
+        handleLabel: handleCartLabel,
+        handleMount,
+        handleUnitPrice: effectiveHandle.price,
+        handlePrice,
       },
     });
   };
@@ -601,14 +604,14 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
                   </div>
                 ) : (
                   <FurtkaModel
-  colorHex={previewColorHex}
-  finish={finishId}
-  profileId={profileId}
-  spacingId={spacingId}
-  fillType={fillType}
-  handleType={selectedHandle.handleType}
-  handleMount={handleMount}
-/>
+                    colorHex={previewColorHex}
+                    finish={finishId}
+                    profileId={profileId}
+                    spacingId={spacingId}
+                    fillType={fillType}
+                    handleType={selectedHandle.handleType}
+                    handleMount={handleMount}
+                  />
                 )}
 
                 {activeImageSrc && (
@@ -805,7 +808,7 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
                             key={s.id}
                             type="button"
                             onClick={() =>
-                              setSpacingId(s.id as "4" | "6" | "9")
+                              setSpacingId(s.id as "2" | "4" | "6" | "9")
                             }
                             className={`px-3 py-1 rounded-full border text-[12px] ${
                               spacingId === s.id
@@ -818,8 +821,10 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
                         ))}
                       </div>
                       <p className="mt-1 text-[11px] text-neutral-500">
-                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm. Inne
-                        wartości traktujemy jako wariant na zamówienie.
+                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm.
+                        <br />
+                        Wersja zagęszczona ok. 4&nbsp;cm wiąże się z dopłatą{" "}
+                        <strong>20&nbsp;zł</strong> do ceny furtki.
                       </p>
                     </div>
                   </div>
@@ -956,89 +961,91 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
               )}
 
               {/* KROK 4 – POCHWYT */}
-{step === 4 && (
-  <section className="space-y-3 border-t border-border/60 pt-4">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-      Krok 4 · Pochwyt do furtki
-    </p>
+              {step === 4 && (
+                <section className="space-y-3 border-t border-border/60 pt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                    Krok 4 · Pochwyt do furtki
+                  </p>
 
-    <div className="grid gap-4 md:grid-cols-2">
-      {/* wybór modelu pochwytu */}
-      <div>
-        <p className="text-[12px] font-semibold text-primary mb-1">
-          Model pochwytu
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {handleOptions.map((h) => (
-            <button
-              key={h.id}
-              type="button"
-              onClick={() => {
-                setHandleId(h.id);
-                if (h.id === "none") {
-                  setHandleMount("none");
-                } else if (handleMount === "none") {
-                  setHandleMount("left");
-                }
-              }}
-              className={`px-3 py-1 rounded-full border text-[12px] ${
-                handleId === h.id
-                  ? "bg-accent text-white border-accent"
-                  : "bg-white text-primary border-border hover:border-accent hover:text-accent"
-              }`}
-            >
-              {h.shortLabel}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-[11px] text-neutral-500">
-          Ceny pochwytów podane są za 1 stronę skrzydła. Przy montażu z obu
-          stron dopłata liczy się podwójnie.
-        </p>
-      </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* wybór modelu pochwytu */}
+                    <div>
+                      <p className="text-[12px] font-semibold text-primary mb-1">
+                        Model pochwytu
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {handleOptions.map((h) => (
+                          <button
+                            key={h.id}
+                            type="button"
+                            onClick={() => {
+                              setHandleId(h.id);
+                              if (h.id === "none") {
+                                setHandleMount("none");
+                              } else if (handleMount === "none") {
+                                setHandleMount("left");
+                              }
+                            }}
+                            className={`px-3 py-1 rounded-full border text-[12px] ${
+                              handleId === h.id
+                                ? "bg-accent text-white border-accent"
+                                : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+                            }`}
+                          >
+                            {h.shortLabel}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-[11px] text-neutral-500">
+                        Ceny pochwytów podane są za 1 stronę skrzydła. Przy
+                        montażu z obu stron dopłata liczy się podwójnie.
+                      </p>
+                    </div>
 
-      {/* wybór strony montażu */}
-      <div>
-        <p className="text-[12px] font-semibold text-primary mb-1">
-          Strona montażu
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {(["none", "left", "right", "both"] as HandleMount[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setHandleMount(m)}
-              className={`px-3 py-1 rounded-full border text-[12px] ${
-                handleMount === m
-                  ? "bg-accent text-white border-accent"
-                  : "bg-white text-primary border-border hover:border-accent hover:text-accent"
-              }`}
-            >
-              {handleMountLabels[m]}
-            </button>
-          ))}
-        </div>
+                    {/* wybór strony montażu */}
+                    <div>
+                      <p className="text-[12px] font-semibold text-primary mb-1">
+                        Strona montażu
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {(["none", "left", "right", "both"] as HandleMount[]).map(
+                          (m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setHandleMount(m)}
+                              className={`px-3 py-1 rounded-full border text-[12px] ${
+                                handleMount === m
+                                  ? "bg-accent text-white border-accent"
+                                  : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+                              }`}
+                            >
+                              {handleMountLabels[m]}
+                            </button>
+                          )
+                        )}
+                      </div>
 
-        <p className="mt-2 text-[12px] text-neutral-700">
-          Aktualnie:{" "}
-          <strong>
-            {handleId === "none" || handleMount === "none"
-              ? "bez pochwytu (klamka standardowa)"
-              : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel}`}
-          </strong>
-          .
-        </p>
+                      <p className="mt-2 text-[12px] text-neutral-700">
+                        Aktualnie:{" "}
+                        <strong>
+                          {handleId === "none" || handleMount === "none"
+                            ? "bez pochwytu (klamka standardowa)"
+                            : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel}`}
+                        </strong>
+                        .
+                      </p>
 
-        {handleId !== "none" && handleMount !== "none" && (
-          <p className="text-[11px] text-neutral-500">
-            Orientacyjna dopłata za wybrany pochwyt:{" "}
-            <strong>{handlePriceLabel}</strong> do ceny furtki.
-          </p>
-        )}
-      </div>
-    </div>
-  </section>
-)}
+                      {handleId !== "none" && handleMount !== "none" && (
+                        <p className="text-[11px] text-neutral-500">
+                          Orientacyjna dopłata za wybrany pochwyt:{" "}
+                          <strong>{handlePriceLabel}</strong> do ceny furtki.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* KROK 5 – KOLOR + STRUKTURA */}
               {step === 5 && (
@@ -1186,18 +1193,18 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
                           {quantity} szt.
                         </strong>
                       </p>
-                       <p>
-    Pochwyt:{" "}
-    <strong className="text-primary">
-      {handleId === "none" || handleMount === "none"
-        ? "bez pochwytu"
-        : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel} (${handlePriceLabel} dopłaty)`}
-    </strong>
-  </p>
+                      <p>
+                        Pochwyt:{" "}
+                        <strong className="text-primary">
+                          {handleId === "none" || handleMount === "none"
+                            ? "bez pochwytu"
+                            : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel} (${handlePriceLabel} dopłaty)`}
+                        </strong>
+                      </p>
                       <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
-                        Uwzględniamy profil, rozstaw, wariant Prosty/Twist,
-                        kolor RAL oraz wykończenie powłoki. Cena ma charakter
-                        orientacyjny.
+                        Uwzględniamy profil, rozstaw (w tym dopłatę za wariant
+                        ok. 4&nbsp;cm), wariant Prosty/Twist, kolor RAL oraz
+                        wykończenie powłoki. Cena ma charakter orientacyjny.
                       </p>
                     </div>
                     <div className="text-right">
@@ -1282,7 +1289,7 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
                   Wstecz
                 </button>
 
-                {step < 7 ?(
+                {step < 6 ? (
                   <button
                     type="button"
                     onClick={handleNextStep}
@@ -1311,7 +1318,7 @@ const selectedHandleMountLabel = handleMountLabels[handleMount];
             <p className="text-[14px] md:text-[15px] text-neutral-800 text-center">
               Furtka Stand Up wykorzystuje pionowy układ profili aluminiowych,
               dzięki czemu bez problemu łączy się z przęsłami, bramą przesuwną
-              i dwuskrzydłową z tej sameej kolekcji. Wersja prosta podkreśla
+              i dwuskrzydłową z tej samej kolekcji. Wersja prosta podkreśla
               pionowy rytm i minimalizm, natomiast Twist – poprzez obrót
               lameli – daje efekt lekkiej żaluzji i większej prywatności. Cała
               konstrukcja jest spawana, szlifowana i malowana proszkowo, co

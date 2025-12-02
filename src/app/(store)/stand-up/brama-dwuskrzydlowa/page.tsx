@@ -60,16 +60,12 @@ const gatePricing = {
   "80x80": {
     mbPrice: 3400,
     standard: {
-      // Uwaga: w Twoim opisie dla 4000 mm były dwie liczby 13800 / 13600
-      // przypisałem 13600 dla 1200 mm i 13800 dla 1500+,
-      // żeby wyższa brama nie była tańsza od niższej.
       400: { h120: 13600, h150Plus: 13800 },
       500: { h120: 16500, h150Plus: 17000 },
       600: { h120: 20100, h150Plus: 20400 },
     },
   },
 } as const;
-
 
 // profile wypełnienia – jak w furtce / bramie przesuwnej
 const profiles = [
@@ -225,8 +221,6 @@ export default function StandUpBramaDwuskrzydlowaPage() {
   const [heightId, setHeightId] = useState(standardHeights[1].id); // 150
   const [widthId, setWidthId] = useState(standardWidths[1].id); // 500
 
-
-
   // na wymiar
   const [customHeight, setCustomHeight] = useState<number | "">("");
   const [customWidth, setCustomWidth] = useState<number | "">("");
@@ -260,33 +254,33 @@ export default function StandUpBramaDwuskrzydlowaPage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-  // TWIST – osobna logika:
-  // 60×40 → tylko 2 cm
-  // 80×40 → tylko 2 cm
-  // 80×80 → tylko 6 cm
-  if (fillType === "twist") {
-    if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
-      return spacingOptionsBase.filter((s) => s.id === "2");
+    // TWIST – osobna logika:
+    // 60×40 → tylko 2 cm
+    // 80×40 → tylko 2 cm
+    // 80×80 → tylko 6 cm
+    if (fillType === "twist") {
+      if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
+        return spacingOptionsBase.filter((s) => s.id === "2");
+      }
+      if (selectedProfile.id === "80x80") {
+        return spacingOptionsBase.filter((s) => s.id === "6");
+      }
     }
-    if (selectedProfile.id === "80x80") {
-      return spacingOptionsBase.filter((s) => s.id === "6");
-    }
-  }
 
-  // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
-  const allowed =
-    spacingOptionsByProfile[selectedProfile.id] ??
-    spacingOptionsBase.map((s) => s.id);
+    // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
+    const allowed =
+      spacingOptionsByProfile[selectedProfile.id] ??
+      spacingOptionsBase.map((s) => s.id);
 
-  return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-}, [selectedProfile.id, fillType]);
+    return spacingOptionsBase.filter((s) => allowed.includes(s.id));
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
-  const allowedIds = availableSpacingOptions.map((s) => s.id);
-  if (!allowedIds.includes(spacingId)) {
-    setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
-  }
-}, [availableSpacingOptions, spacingId]);
+    const allowedIds = availableSpacingOptions.map((s) => s.id);
+    if (!allowedIds.includes(spacingId)) {
+      setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
+    }
+  }, [availableSpacingOptions, spacingId]);
 
   // po zmianie PROSTA/TWIST wracamy do modelu 3D
   useEffect(() => {
@@ -363,6 +357,11 @@ export default function StandUpBramaDwuskrzydlowaPage() {
 
     let price = leafBasePrice;
 
+    // 4. Dopłata za zagęszczony rozstaw 4 cm: ok. +20% do ceny jednostkowej bramy
+    if (spacingId === "4") {
+      price = Math.round(price * 1.2);
+    }
+
     // awaryjny fallback, gdyby coś poszło nie tak
     if (!Number.isFinite(price) || price <= 0) {
       price = basePrice;
@@ -390,6 +389,7 @@ export default function StandUpBramaDwuskrzydlowaPage() {
     customWidth,
     selectedFinish.id,
     colorMode,
+    spacingId, // ważne: cena zależy od rozstawu
     quantity,
   ]);
 
@@ -518,8 +518,12 @@ export default function StandUpBramaDwuskrzydlowaPage() {
                       src={src}
                       alt={
                         fillType === "prosta"
-                          ? `Brama dwuskrzydłowa Stand Up prosta – widok / detal ${idx + 1}`
-                          : `Brama dwuskrzydłowa Stand Up Twist – widok / detal ${idx + 1}`
+                          ? `Brama dwuskrzydłowa Stand Up prosta – widok / detal ${
+                              idx + 1
+                            }`
+                          : `Brama dwuskrzydłowa Stand Up Twist – widok / detal ${
+                              idx + 1
+                            }`
                       }
                       fill
                       className="object-cover object-center"
@@ -703,7 +707,9 @@ export default function StandUpBramaDwuskrzydlowaPage() {
                             key={s.id}
                             type="button"
                             onClick={() =>
-                              setSpacingId(s.id as "4" | "6" | "9")
+                              setSpacingId(
+                                s.id as "2" | "4" | "6" | "9"
+                              )
                             }
                             className={`px-3 py-1 rounded-full border text-[12px] ${
                               spacingId === s.id
@@ -716,8 +722,10 @@ export default function StandUpBramaDwuskrzydlowaPage() {
                         ))}
                       </div>
                       <p className="mt-1 text-[11px] text-neutral-500">
-                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm. Gęstsze
-                        i rzadsze rozstawy traktujemy jako warianty projektowe.
+                        Standardowo przyjmujemy rozstaw ok. 6&nbsp;cm.
+                        <br />
+                        Wersja zagęszczona ok. 4&nbsp;cm wiąże się z dopłatą{" "}
+                        <strong>ok. 20% do ceny bramy</strong>.
                       </p>
                     </div>
                   </div>
@@ -998,10 +1006,11 @@ export default function StandUpBramaDwuskrzydlowaPage() {
                         </strong>
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
-                        Uwzględniamy profil, rozstaw, wariant Prosty/Twist,
-                        kolor RAL, strukturę oraz wymiar bramy. Cena ma
-                        charakter orientacyjny – wiążącą wycenę prześlemy po
-                        weryfikacji projektu i sposobu montażu.
+                        Uwzględniamy profil, rozstaw (w tym dopłatę za wariant
+                        ok. 4&nbsp;cm), wariant Prosty/Twist, kolor RAL,
+                        strukturę oraz wymiar bramy. Cena ma charakter
+                        orientacyjny – wiążącą wycenę prześlemy po weryfikacji
+                        projektu i sposobu montażu.
                       </p>
                     </div>
                     <div className="text-right">
