@@ -21,7 +21,7 @@ import SlabZadaszenieModel from "../../../components/Slabzadaszeniemodel";
  * ----------------------------------------------------
  */
 
-const basePrice = 5200; // orientacyjna baza dla zadaszenia SLAB FENCE
+const basePrice = 12000; // orientacyjna baza dla zadaszenia SLAB FENCE
 
 type HplPattern = {
   id: string;

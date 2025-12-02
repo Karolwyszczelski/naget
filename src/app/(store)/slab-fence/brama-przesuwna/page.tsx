@@ -21,17 +21,19 @@ import {
  * ----------------------------------------------------
  */
 
-// orientacyjna cena bazowa
+// baza awaryjna (fallback)
 const basePrice = 13900;
 
 // wysokości / szerokości (światło w cm)
+// standard: 1500, 1700, 1800, 2000 mm
 const standardHeights = [
-  { id: "140", label: "140 cm" },
   { id: "150", label: "150 cm" },
-  { id: "160", label: "160 cm" },
+  { id: "170", label: "170 cm" },
   { id: "180", label: "180 cm" },
+  { id: "200", label: "200 cm" },
 ];
 
+// standard: 4000, 5000, 6000 mm
 const standardWidths = [
   { id: "400", label: "400 cm (4000 mm)" },
   { id: "500", label: "500 cm (5000 mm)" },
@@ -94,7 +96,7 @@ const finishOptions = [
   {
     id: "brokat",
     label: "Struktura drobny brokat",
-    factor: 1.03,
+    factor: 1.03, // realnie w kalkulacji używamy +10%
     swatch: "/textures/struktura-brokat.png",
   },
 ] as const;
@@ -108,6 +110,38 @@ type StepDef = {
   id: Step;
   label: string;
   icon: IconType;
+};
+
+// GRUPY CENOWE DLA BRAMY PRZESUWNEJ
+type HeightTier = "150" | "170-180" | "200";
+type WidthKey = "400" | "500" | "600";
+
+// Cennik standardowy wg szerokości (mm) i wysokości (mm):
+// 4000: 1500 → 13500, 1700/1800 → 14800, 2000 → 14500
+// 5000: 1500 → 17750, 1700/1800 → 18300, 2000 → 19000
+// 6000: 1500 → 21250, 1700/1800 → 21800, 2000 → 22500
+const slabSlidingPriceMatrix: Record<WidthKey, Record<HeightTier, number>> = {
+  "400": {
+    "150": 13500,
+    "170-180": 14800,
+    "200": 14500,
+  },
+  "500": {
+    "150": 17750,
+    "170-180": 18300,
+    "200": 19000,
+  },
+  "600": {
+    "150": 21250,
+    "170-180": 21800,
+    "200": 22500,
+  },
+};
+
+const mapHeightToTier = (heightCm: number): HeightTier => {
+  if (heightCm <= 160) return "150"; // 1500
+  if (heightCm < 190) return "170-180"; // 1700/1800
+  return "200"; // 2000
 };
 
 export default function SlabFenceBramaPrzesuwnaPage() {
@@ -130,7 +164,7 @@ export default function SlabFenceBramaPrzesuwnaPage() {
 
   // wymiary
   const [variant, setVariant] = useState<"standard" | "custom">("standard");
-  const [heightId, setHeightId] = useState(standardHeights[2].id); // 160
+  const [heightId, setHeightId] = useState(standardHeights[1].id); // 170
   const [widthId, setWidthId] = useState(standardWidths[1].id); // 500
   const [customHeight, setCustomHeight] = useState<number | "">("");
   const [customWidth, setCustomWidth] = useState<number | "">("");
@@ -160,7 +194,7 @@ export default function SlabFenceBramaPrzesuwnaPage() {
   const [quantity, setQuantity] = useState(1);
 
   const selectedHeight =
-    standardHeights.find((h) => h.id === heightId) ?? standardHeights[2];
+    standardHeights.find((h) => h.id === heightId) ?? standardHeights[1];
   const selectedWidth =
     standardWidths.find((w) => w.id === widthId) ?? standardWidths[1];
   const selectedHpl =
@@ -179,29 +213,42 @@ export default function SlabFenceBramaPrzesuwnaPage() {
 
   // KALKULACJA CENY
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1;
-
-    factor *= selectedHpl.factor;
-    factor *= selectedFinish.factor;
-
-    if (frameColorMode === "custom") factor *= 1.08;
+    let baseFromMatrix: number | undefined;
 
     if (variant === "standard") {
-      const h = Number(selectedHeight.id);
-      const w = Number(selectedWidth.id);
-      const areaFactor = (h / 160) * 0.5 + (w / 500) * 0.6;
-      factor *= 1 + areaFactor * 0.1;
+      // cennik z tabeli
+      const heightCm = Number(selectedHeight.id);
+      const widthKey = selectedWidth.id as WidthKey;
+      const heightTier = mapHeightToTier(heightCm);
+      baseFromMatrix = slabSlidingPriceMatrix[widthKey][heightTier];
     } else {
-      const h = typeof customHeight === "number" ? customHeight : 0;
-      const w = typeof customWidth === "number" ? customWidth : 0;
-      if (h && w) {
-        const areaFactor = (h / 160) * 0.5 + (w / 500) * 0.6;
-        factor *= 1 + areaFactor * 0.12;
+      // NA WYMIAR: 3500 zł / mb szerokości (światła wjazdu)
+      const w =
+        typeof customWidth === "number" && customWidth > 0
+          ? customWidth
+          : undefined;
+      if (w) {
+        const widthMeters = w / 100; // w cm → m
+        baseFromMatrix = widthMeters * 3500;
       }
     }
 
-    let price = basePrice * factor;
+    let price = baseFromMatrix ?? basePrice;
 
+    // dekor HPL
+    price *= selectedHpl.factor;
+
+    // dowolny RAL
+    if (frameColorMode === "custom") {
+      price *= 1.08;
+    }
+
+    // struktura brokat – +10% dopłaty
+    if (finishId === "brokat") {
+      price *= 1.1;
+    }
+
+    // dopłaty za wyposażenie
     if (hasAutomationPrep) price += 1850; // wózki, najazd, listwy, przygotowanie pod napęd
     if (hasLedInPosts) price += 650;
     if (hasTopGuidePost) price += 420;
@@ -225,15 +272,14 @@ export default function SlabFenceBramaPrzesuwnaPage() {
     };
   }, [
     variant,
-    customHeight,
     customWidth,
+    frameColorMode,
+    finishId,
     hasAutomationPrep,
     hasLedInPosts,
     hasTopGuidePost,
-    frameColorMode,
     quantity,
     selectedHpl.factor,
-    selectedFinish.factor,
     selectedHeight.id,
     selectedWidth.id,
   ]);
@@ -320,8 +366,8 @@ export default function SlabFenceBramaPrzesuwnaPage() {
             <p className="text-[14px] md:text-[15px] text-neutral-800 max-w-3xl">
               Brama przesuwna SLAB FENCE to połączenie{" "}
               <strong>pełnej prywatności</strong> z wygodą automatycznego
-              wjazdu. Panele z płyt fasadowych HPL tworzą jednolitą ścianę,
-              a stelaż oparty na profilach stalowych zapewnia sztywność całej
+              wjazdu. Panele z płyt fasadowych HPL tworzą jednolitą ścianę, a
+              stelaż oparty na profilach stalowych zapewnia sztywność całej
               konstrukcji. W standardzie otrzymujesz{" "}
               <strong>
                 2 słupy 80×80×2&nbsp;mm, wózki, najazd i rolki prowadzące
@@ -451,8 +497,8 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                     ))}
                   </div>
                   <p className="text-[11px] text-neutral-500">
-                    Te same dekory możesz zastosować na przęsłach i furtce,
-                    aby cały front ogrodzenia był spójny.
+                    Te same dekory możesz zastosować na przęsłach i furtce, aby
+                    cały front ogrodzenia był spójny.
                   </p>
 
                   <Link
@@ -567,7 +613,7 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                     </div>
                     <p className="text-[11px] text-neutral-500">
                       Stelaż malujemy proszkowo w strukturze mat lub drobny
-                      brokat – odporna powłoka na warunki zewnętrzne.
+                      brokat – konstrukcja odporna na warunki zewnętrzne.
                     </p>
                   </div>
                 </section>
@@ -600,7 +646,7 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                           : "bg-white text-primary border-border hover:border-accent hover:text-accent"
                       }`}
                     >
-                      Na wymiar
+                      Na wymiar (3500 zł/mb)
                     </button>
                   </div>
 
@@ -674,7 +720,7 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                           className="w-full rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                         <p className="mt-1 text-[11px] text-neutral-500">
-                          Najczęściej 150–180 cm. Ostateczne wymiary
+                          Najczęściej 150–200 cm. Ostateczne wymiary
                           doprecyzujemy na etapie projektu.
                         </p>
                       </div>
@@ -697,8 +743,9 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                           className="w-full rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                         <p className="mt-1 text-[11px] text-neutral-500">
-                          Standardowo 4000 / 5000 / 6000 mm. Inne szerokości
-                          realizujemy jako projekt indywidualny.
+                          Standardowo 4000 / 5000 / 6000 mm. Na wymiar bramę
+                          wyceniamy orientacyjnie wg stawki{" "}
+                          <strong>3500 zł/mb szerokości światła wjazdu</strong>.
                         </p>
                       </div>
                     </div>
@@ -834,10 +881,10 @@ export default function SlabFenceBramaPrzesuwnaPage() {
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
                         Cena uwzględnia wybrany dekor Trespa, kolor i strukturę
-                        stelaża, wymiary bramy, przygotowanie pod automatykę
-                        oraz wyposażenie dodatkowe. Ma charakter orientacyjny –
-                        wiążącą ofertę przygotujemy po analizie projektu i
-                        warunków montażu.
+                        stelaża, wymiary bramy (w tym wycenę na wymiar wg 3500
+                        zł/mb), przygotowanie pod automatykę oraz wyposażenie
+                        dodatkowe. Ma charakter orientacyjny – wiążącą ofertę
+                        przygotujemy po analizie projektu i warunków montażu.
                       </p>
                     </div>
                     <div className="text-right">
