@@ -9,7 +9,7 @@ import { FaDoorOpen, FaDoorClosed, FaSyncAlt } from "react-icons/fa";
 // --- TYPY ---
 type Finish = "mat" | "brokat";
 type ProfileId = "60x40" | "80x40" | "80x80";
-type SpacingId = "4" | "6" | "9";
+type SpacingId = "2" | "4" | "6" | "9";
 type FillType = "prosta" | "twist";
 
 type Props = {
