@@ -103,6 +103,20 @@ type StepDef = {
   icon: IconType;
 };
 
+// zdjęcia dla PROSTEJ i TWIST – podmień ścieżki na swoje, gdy będziesz mieć finalne pliki
+const variantImages: Record<"prosta" | "twist", string[]> = {
+  prosta: [
+    "/products/brama-stand-przesuwna.jpeg", // główny widok
+    "/products/standup-bramaprzes-detail-1.webp",
+    "/products/standup-bramaprzes-detail-2.webp",
+  ],
+  twist: [
+    "/products/brama-stand-przesuwna-twist.jpeg", // jeśli nie masz, może na razie wskazywać na ten sam plik co prosta
+    "/products/standup-bramaprzes-twist-detail-1.webp",
+    "/products/standup-bramaprzes-twist-detail-2.webp",
+  ],
+};
+
 const upsellItems = [
   {
     id: "upsell-furtka",
@@ -110,23 +124,41 @@ const upsellItems = [
     description:
       "Furtka w tym samym rytmie profili co brama – spójny front posesji.",
     href: "/stand-up/furtka",
-    image: "/products/standup-furtka-prosta-main.jpg",
+    image: "/products/furtka-stand.png",
     badge: "Furtka",
+  },
+  {
+    id: "upsell-brama",
+    name: "Brama Dwuskrzydłowa Stand Up",
+    description:
+      "Brama w tym samym rytmie profili co furtka – skonfiguruj w tej samej serii.",
+    href: "/stand-up/brama-dwuskrzydlowa",
+    image: "/products/standup-brama-dwuskrzydlowa1.png",
+    badge: "Brama dwuskrzydłowa",
   },
   {
     id: "upsell-zadaszenie",
     name: "Zadaszenie nad furtkę Stand Up",
     description:
-      "Zadaszenie wejścia dopasowane do serii Stand Up – ochrona przed deszczem i śniegiem.",
+      "Zadaszenie wejścia dopasowane do profili furtki – ochrona przed deszczem i śniegiem.",
     href: "/stand-up/zadaszenie",
     image: "/products/standup-zadaszenie.gif",
     badge: "Zadaszenie",
   },
   {
-    id: "upsell-automat",
-    name: "Automatyka do bramy przesuwnej",
+    id: "upsell-slup",
+    name: "Słupek multimedialny Stand Up",
     description:
-      "Napędy, fotokomórki i akcesoria dobrane do bram przesuwnych Naget.",
+      "Miejsce na skrzynkę, wideodomofon i automatykę – spójne z linią Stand Up.",
+    href: "/stand-up/slupek-multimedialny",
+    image: undefined,
+    badge: "Słupek multimedialny",
+  },
+  {
+    id: "upsell-automat",
+    name: "Automatyka do bramy",
+    description:
+      "Napędy, fotokomórki i akcesoria dobrane do bram Naget – wygodne sterowanie.",
     href: "/dodatki/automatyka",
     image: "/products/addons-automat.png",
     badge: "Automatyka",
@@ -182,6 +214,9 @@ export default function StandUpBramaPrzesuwnaPage() {
   // ilość
   const [quantity, setQuantity] = useState(1);
 
+  // aktywny widok w galerii (null = model 3D, string = ścieżka zdjęcia)
+  const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
+
   const selectedHeight =
     standardHeights.find((h) => h.id === heightId) ?? standardHeights[1];
   const selectedWidth =
@@ -190,11 +225,20 @@ export default function StandUpBramaPrzesuwnaPage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    const allowed =
+    let allowed =
       spacingOptionsByProfile[selectedProfile.id] ??
       spacingOptionsBase.map((s) => s.id);
+
+    // DLA TWIST + profili 80×40 / 80×80 – TYLKO rozstaw 6 cm
+    if (
+      fillType === "twist" &&
+      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
+    ) {
+      allowed = ["6"];
+    }
+
     return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id]);
+  }, [selectedProfile.id, fillType]);
 
   useEffect(() => {
     const allowedIds = availableSpacingOptions.map((s) => s.id);
@@ -202,6 +246,11 @@ export default function StandUpBramaPrzesuwnaPage() {
       setSpacingId(allowedIds[0] as "4" | "6" | "9");
     }
   }, [availableSpacingOptions, spacingId]);
+
+  // reset widoku na model 3D po zmianie PROSTA/TWIST
+  useEffect(() => {
+    setActiveImageSrc(null);
+  }, [fillType]);
 
   const selectedSpacing =
     availableSpacingOptions.find((s) => s.id === spacingId) ??
@@ -339,6 +388,12 @@ export default function StandUpBramaPrzesuwnaPage() {
 
   const twistAngle = twistAnglesByProfile[profileId];
 
+  const thumbs = variantImages[fillType].slice(1);
+  const activeImageAlt =
+    fillType === "prosta"
+      ? "Brama przesuwna Stand Up – widok prosty"
+      : "Brama przesuwna Stand Up Twist – widok";
+
   return (
     <>
       {/* SEKCJA GŁÓWNA PRODUKTU */}
@@ -360,17 +415,65 @@ export default function StandUpBramaPrzesuwnaPage() {
             </p>
           </header>
 
-          {/* UKŁAD 2 KOLUMN: PODGLĄD (3D) + KONFIGURATOR */}
+          {/* UKŁAD 2 KOLUMN: PODGLĄD (3D / FOTO) + KONFIGURATOR */}
           <div className="grid gap-8 md:grid-cols-[minmax(0,3fr)_minmax(0,3fr)] items-start">
-            {/* LEWA – MODEL 3D */}
+            {/* LEWA – MODEL 3D / ZDJĘCIE + MINIATURY */}
             <div className="space-y-4">
-              <BramaPrzesuwnaModel
-                colorHex={previewColorHex}
-                finish={finishId}
-                profileId={profileId}
-                spacingId={spacingId}
-                fillType={fillType}
-              />
+              <div className="relative w-full rounded-3xl overflow-hidden shadow-soft bg-transparent">
+                {activeImageSrc ? (
+                  <div className="relative w-full aspect-[4/3]">
+                    <Image
+                      src={activeImageSrc}
+                      alt={activeImageAlt}
+                      fill
+                      className="object-cover object-center"
+                    />
+                  </div>
+                ) : (
+                  <BramaPrzesuwnaModel
+                    colorHex={previewColorHex}
+                    finish={finishId}
+                    profileId={profileId}
+                    spacingId={spacingId}
+                    fillType={fillType}
+                  />
+                )}
+
+                {activeImageSrc && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveImageSrc(null)}
+                    className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary shadow-soft hover:bg-white"
+                  >
+                    Pokaż model 3D
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {thumbs.map((src, idx) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setActiveImageSrc(src)}
+                    className="relative h-28 rounded-2xl overflow-hidden shadow-soft bg-transparent"
+                  >
+                    <Image
+                      src={src}
+                      alt={
+                        fillType === "prosta"
+                          ? `Detal bramy przesuwnej Stand Up prostej ${idx + 1}`
+                          : `Detal bramy przesuwnej Stand Up Twist ${idx + 1}`
+                      }
+                      fill
+                      className="object-cover object-center"
+                    />
+                    <span className="absolute left-2 bottom-2 rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      {fillType === "prosta" ? "Prosty" : "Twist"}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
               <div className="rounded-3xl bg-white/80 border border-border p-4 text-[12px] text-neutral-700 space-y-1">
                 <p>
@@ -965,12 +1068,12 @@ export default function StandUpBramaPrzesuwnaPage() {
 
           <section className="space-y-3">
             <h2 className="text-[5px] md:text-[10px] font-bold text-accent text-center">
-              Rysunek techniczny bramy przesuwnej Stand Up
+              Rysunek techniczny Stand Up
             </h2>
 
             <div className="relative mx-auto w-full max-w-5xl aspect-[77/54] rounded-3xl overflow-hidden shadow-soft bg-white/70">
               <Image
-                src="/products/standup-brama-tech.png"
+                src="/products/standup-furtka-tech.png"
                 alt="Rysunek techniczny bramy przesuwnej Stand Up"
                 fill
                 className="object-contain object-center"
@@ -994,7 +1097,7 @@ export default function StandUpBramaPrzesuwnaPage() {
             </div>
             <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-soft bg-transparent">
               <Image
-                src="/products/standup-brama.png"
+                src="/products/brama-stand-przesuwna.jpeg"
                 alt="Brama przesuwna aluminiowa Stand Up"
                 fill
                 className="object-cover object-center"
