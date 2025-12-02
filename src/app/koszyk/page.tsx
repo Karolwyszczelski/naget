@@ -67,12 +67,12 @@ const CONFIG_ROUTES: Record<string, string> = {
   "standup-brama": "/stand-up/brama-przesuwna",
   "standup-brama-przesuwna": "/stand-up/brama-przesuwna",
   "standup-zadaszenie": "/stand-up/zadaszenie",
-  "standup-brama-skrzydlowa": "/stand-up/brama-skrzydlowa",
+  "standup-brama-skrzydlowa": "/stand-up/brama-dwuskrzydlowa",
 
   "slab-furtka": "/slab-fence/furtka",
   "slab-brama": "/slab-fence/brama-przesuwna",
   "slab-brama-przesuwna": "/slab-fence/brama-przesuwna",
-  "slab-brama-skrzydlowa": "/slab-fence/brama-skrzydlowa",
+  "slab-brama-skrzydlowa": "/slab-fence/brama-dwuskrzydlowa",
   "slab-zadaszenie": "/slab-fence/zadaszenie",
 
   "addons-automat": "/dodatki/automatyka",
