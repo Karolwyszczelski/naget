@@ -1,3 +1,4 @@
+// app/stand-up/slab-furtka/page.tsx (lub zgodnie z Twoją ścieżką)
 "use client";
 
 import { useMemo, useState } from "react";
@@ -21,17 +22,51 @@ import {
  * ----------------------------------------------------
  */
 
-const basePrice = 5200;
+// baza „awaryjna” – realne ceny bierzemy z macierzy poniżej
+const basePrice = 4370;
 
 // wysokości / szerokości (światło w cm)
+// 170 i 180 cm mają tę samą grupę cenową (1700/1800)
 const standardHeights = [
-  { id: "140", label: "140 cm" },
   { id: "150", label: "150 cm" },
-  { id: "160", label: "160 cm" },
+  { id: "170", label: "170 cm" },
   { id: "180", label: "180 cm" },
+  { id: "200", label: "200 cm" },
 ];
 
-const standardWidths = [{ id: "100", label: "100 cm (1000 mm)" }];
+const standardWidths = [
+  { id: "100", label: "100 cm (1000 mm)" },
+  { id: "120", label: "120 cm (1200 mm)" },
+];
+
+// GRUPY CENOWE
+type HeightTier = "150" | "170-180" | "200";
+type WidthKey = "100" | "120";
+
+// SZTYWNY CENNIK wg szerokości i wysokości (bez dopłat HPL, koloru, struktury, dodatków)
+const slabPriceMatrix: Record<WidthKey, Record<HeightTier, number>> = {
+  "100": {
+    "150": 4140,
+    "170-180": 4370,
+    "200": 4900,
+  },
+  "120": {
+    "150": 4370,
+    "170-180": 4550,
+    "200": 4830,
+  },
+};
+
+const mapHeightToTier = (heightCm: number): HeightTier => {
+  if (heightCm <= 160) return "150";
+  if (heightCm < 190) return "170-180";
+  return "200";
+};
+
+const mapWidthToKey = (widthCm: number): WidthKey => {
+  // 100 lub 120 cm – bierzemy bliższy standard
+  return Math.abs(widthCm - 100) <= Math.abs(widthCm - 120) ? "100" : "120";
+};
 
 type HplPattern = {
   id: string;
@@ -42,7 +77,7 @@ type HplPattern = {
   colorHex: string;
 };
 
-// Używamy realnych dekorów Trespa – na razie trzy przykłady
+// przykładowe dekory Trespa
 const hplPatterns: HplPattern[] = [
   {
     id: "na17-natural-graphite",
@@ -50,7 +85,7 @@ const hplPatterns: HplPattern[] = [
     group: "Mineralne / betonopodobne",
     factor: 1.03,
     texture: "/textures/slabfence/na17-natural-graphite.jpg",
-    colorHex: "#5f6165", // ciemny grafit
+    colorHex: "#5f6165",
   },
   {
     id: "nm04-sintered-alloy",
@@ -58,7 +93,7 @@ const hplPatterns: HplPattern[] = [
     group: "Mineralne / betonopodobne",
     factor: 1.0,
     texture: "/textures/slabfence/nm04-sintered-alloy.jpg",
-    colorHex: "#8f9398", // średni szaro-metaliczny
+    colorHex: "#8f9398",
   },
   {
     id: "nw18-light-mahogany",
@@ -66,7 +101,7 @@ const hplPatterns: HplPattern[] = [
     group: "Drewno",
     factor: 1.06,
     texture: "/textures/slabfence/nw18-light-mahogany.jpg",
-    colorHex: "#9c6945", // ciepły mahoń
+    colorHex: "#9c6945",
   },
 ];
 
@@ -90,7 +125,7 @@ const finishOptions = [
   {
     id: "brokat",
     label: "Struktura drobny brokat",
-    factor: 1.03,
+    factor: 1.03, // w cenie używamy +10% na sztywno, patrz kalkulacja
     swatch: "/textures/struktura-brokat.png",
   },
 ] as const;
@@ -126,7 +161,7 @@ export default function SlabFenceFurtkaPage() {
 
   // wymiary
   const [variant, setVariant] = useState<"standard" | "custom">("standard");
-  const [heightId, setHeightId] = useState(standardHeights[2].id); // 160
+  const [heightId, setHeightId] = useState(standardHeights[1].id); // 170
   const [widthId, setWidthId] = useState(standardWidths[0].id); // 100
   const [customHeight, setCustomHeight] = useState<number | "">("");
   const [customWidth, setCustomWidth] = useState<number | "">("");
@@ -158,7 +193,7 @@ export default function SlabFenceFurtkaPage() {
   const [quantity, setQuantity] = useState(1);
 
   const selectedHeight =
-    standardHeights.find((h) => h.id === heightId) ?? standardHeights[2];
+    standardHeights.find((h) => h.id === heightId) ?? standardHeights[1];
   const selectedWidth =
     standardWidths.find((w) => w.id === widthId) ?? standardWidths[0];
   const selectedHpl =
@@ -177,29 +212,52 @@ export default function SlabFenceFurtkaPage() {
 
   // KALKULACJA CENY
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1;
-
-    factor *= selectedHpl.factor;
-    factor *= selectedFinish.factor;
-
-    if (frameColorMode === "custom") factor *= 1.08;
+    let baseFromMatrix: number | undefined;
 
     if (variant === "standard") {
-      const h = Number(selectedHeight.id);
-      const w = Number(selectedWidth.id);
-      const areaFactor = (h / 160) * 0.5 + (w / 100) * 0.5;
-      factor *= 1 + areaFactor * 0.08;
+      const hCm = Number(selectedHeight.id);
+      const wCm = Number(selectedWidth.id);
+
+      const heightTier = mapHeightToTier(hCm);
+      const widthKey = mapWidthToKey(wCm);
+
+      baseFromMatrix = slabPriceMatrix[widthKey][heightTier];
     } else {
-      const h = typeof customHeight === "number" ? customHeight : 0;
-      const w = typeof customWidth === "number" ? customWidth : 0;
+      const h =
+        typeof customHeight === "number" && customHeight > 0
+          ? customHeight
+          : undefined;
+      const w =
+        typeof customWidth === "number" && customWidth > 0
+          ? customWidth
+          : undefined;
+
       if (h && w) {
-        const areaFactor = (h / 160) * 0.5 + (w / 100) * 0.5;
-        factor *= 1 + areaFactor * 0.1;
+        const heightTier = mapHeightToTier(h);
+        const widthKey = mapWidthToKey(w);
+        const standardBase = slabPriceMatrix[widthKey][heightTier];
+        // NA WYMIAR +20% względem zbliżonego wymiaru standardowego
+        baseFromMatrix = Math.round(standardBase * 1.2);
       }
     }
 
-    let price = basePrice * factor;
+    // fallback, gdyby coś poszło nie tak
+    let price = baseFromMatrix ?? basePrice;
 
+    // dekor HPL
+    price *= selectedHpl.factor;
+
+    // kolor ramy – dowolny RAL
+    if (frameColorMode === "custom") {
+      price *= 1.08;
+    }
+
+    // struktura brokat +10% do ceny wyjściowej
+    if (finishId === "brokat") {
+      price *= 1.1;
+    }
+
+    // dopłaty za wyposażenie
     if (hasElectricStrike) price += 550;
     if (hasLedInPost) price += 420;
     if (handleVariant === "tube") price += 320;
@@ -225,13 +283,13 @@ export default function SlabFenceFurtkaPage() {
     variant,
     customHeight,
     customWidth,
+    frameColorMode,
+    finishId,
     hasElectricStrike,
     hasLedInPost,
     handleVariant,
-    frameColorMode,
     quantity,
     selectedHpl.factor,
-    selectedFinish.factor,
     selectedHeight.id,
     selectedWidth.id,
   ]);
@@ -316,8 +374,8 @@ export default function SlabFenceFurtkaPage() {
               Furtka z kolekcji SLAB FENCE to propozycja dla osób, które chcą{" "}
               <strong>całkowicie odciąć się od ulicy</strong>. Pełne panele z
               płyt fasadowych HPL montowane są na stalowym stelażu
-              ocynkowanym, malowanym proszkowo na wybrany kolor RAL. W standardzie
-              otrzymujesz{" "}
+              ocynkowanym, malowanym proszkowo na wybrany kolor RAL. W
+              standardzie otrzymujesz{" "}
               <strong>
                 2 słupy 80×80×2 mm, zawiasy regulowane oraz zamek
               </strong>
@@ -515,7 +573,7 @@ export default function SlabFenceFurtkaPage() {
                         value={customRalCode}
                         onChange={(e) => setCustomRalCode(e.target.value)}
                         placeholder="np. 7021, 9007, 8019..."
-                        className="rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                        className="rounded-2xl border border-border bg:white/70 bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                       />
                       <p className="text-[11px] text-neutral-500">
                         Możliwe wszystkie kolory z palety RAL. Dopłata zależy
@@ -598,7 +656,7 @@ export default function SlabFenceFurtkaPage() {
                           : "bg-white text-primary border-border hover:border-accent hover:text-accent"
                       }`}
                     >
-                      Na wymiar
+                      Na wymiar (+20%)
                     </button>
                   </div>
 
@@ -655,7 +713,7 @@ export default function SlabFenceFurtkaPage() {
                         </p>
                         <input
                           type="number"
-                          min={130}
+                          min={140}
                           max={220}
                           value={customHeight}
                           onChange={(e) =>
@@ -668,7 +726,7 @@ export default function SlabFenceFurtkaPage() {
                           className="w-full rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                         <p className="mt-1 text-[11px] text-neutral-500">
-                          Najczęściej 160–180 cm. Ostateczne wymiary
+                          Najczęściej 150–200 cm. Ostateczne wymiary
                           doprecyzujemy na etapie projektu.
                         </p>
                       </div>
@@ -678,8 +736,8 @@ export default function SlabFenceFurtkaPage() {
                         </p>
                         <input
                           type="number"
-                          min={80}
-                          max={130}
+                          min={90}
+                          max={140}
                           value={customWidth}
                           onChange={(e) =>
                             setCustomWidth(
@@ -691,8 +749,8 @@ export default function SlabFenceFurtkaPage() {
                           className="w-full rounded-2xl border border-border bg-white/70 px-3 py-2 text-[13px] outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                         />
                         <p className="mt-1 text-[11px] text-neutral-500">
-                          Standardowo 100 cm. Inne szerokości realizujemy
-                          indywidualnie.
+                          Standardowo 100 lub 120 cm. Inne szerokości
+                          realizujemy indywidualnie (+20%).
                         </p>
                       </div>
                     </div>
@@ -840,7 +898,8 @@ export default function SlabFenceFurtkaPage() {
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
                         Cena uwzględnia wybrany dekor Trespa, kolor i strukturę
-                        stelaża, wymiary oraz wyposażenie. Ma charakter
+                        stelaża, wymiary (w tym ewentualną dopłatę za wymiar
+                        niestandardowy) oraz wyposażenie. Ma charakter
                         orientacyjny – wiążącą ofertę przygotujemy po
                         sprawdzeniu projektu i warunków montażu.
                       </p>
