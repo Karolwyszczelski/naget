@@ -114,7 +114,6 @@ const variantImages: Record<"prosta" | "twist", string[]> = {
   twist: [
     "/products/brama-stand-przesuwna-twist.jpeg", // jeśli nie masz, może na razie wskazywać na ten sam plik co prosta
     "/products/standup-bramaprzes-twist-detail-1.webp",
-    "/products/standup-bramaprzes-twist-detail-2.webp",
   ],
 };
 
