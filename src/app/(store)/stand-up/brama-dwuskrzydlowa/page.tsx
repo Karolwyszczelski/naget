@@ -26,10 +26,10 @@ const basePrice = 9500;
 
 // standardowe wysokości / szerokości (światło w cm)
 const standardHeights = [
-  { id: "140", label: "140 cm" },
+  { id: "120", label: "120 cm" },
   { id: "150", label: "150 cm" },
-  { id: "160", label: "160 cm" },
-  { id: "180", label: "180 cm" },
+  { id: "170", label: "170 cm" },
+  { id: "200", label: "200 cm" },
 ];
 
 const standardWidths = [
@@ -37,6 +37,39 @@ const standardWidths = [
   { id: "500", label: "500 cm (5000 mm)" },
   { id: "600", label: "600 cm (6000 mm)" },
 ];
+
+// sztywny cennik bramy dwuskrzydłowej Stand Up (PROSTA i TWIST)
+const gatePricing = {
+  "60x40": {
+    // niestandardowe szerokości – cena za 1 mb światła bramy
+    mbPrice: 2700,
+    standard: {
+      400: { h120: 9600, h150Plus: 10000 },
+      500: { h120: 12000, h150Plus: 12500 },
+      600: { h120: 14400, h150Plus: 15000 },
+    },
+  },
+  "80x40": {
+    mbPrice: 2950,
+    standard: {
+      400: { h120: 11600, h150Plus: 11800 },
+      500: { h120: 14450, h150Plus: 14750 },
+      600: { h120: 17400, h150Plus: 17700 },
+    },
+  },
+  "80x80": {
+    mbPrice: 3400,
+    standard: {
+      // Uwaga: w Twoim opisie dla 4000 mm były dwie liczby 13800 / 13600
+      // przypisałem 13600 dla 1200 mm i 13800 dla 1500+,
+      // żeby wyższa brama nie była tańsza od niższej.
+      400: { h120: 13600, h150Plus: 13800 },
+      500: { h120: 16500, h150Plus: 17000 },
+      600: { h120: 20100, h150Plus: 20400 },
+    },
+  },
+} as const;
+
 
 // profile wypełnienia – jak w furtce / bramie przesuwnej
 const profiles = [
@@ -192,6 +225,8 @@ export default function StandUpBramaDwuskrzydlowaPage() {
   const [heightId, setHeightId] = useState(standardHeights[1].id); // 150
   const [widthId, setWidthId] = useState(standardWidths[1].id); // 500
 
+
+
   // na wymiar
   const [customHeight, setCustomHeight] = useState<number | "">("");
   const [customWidth, setCustomWidth] = useState<number | "">("");
@@ -280,38 +315,58 @@ export default function StandUpBramaDwuskrzydlowaPage() {
       ? "Brama dwuskrzydłowa Stand Up – widok prosty"
       : "Brama dwuskrzydłowa Stand Up Twist – widok";
 
-  // KALKULACJA CENY – lekko mniejszy wpływ szerokości niż przy przesuwnej
+  // KALKULACJA CENY – sztywny cennik + dopłaty
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1.0;
+    // 1. Podstawowa cena bramy (bez dopłat za brokat / RAL)
+    const pricingForProfile =
+      gatePricing[profileId as keyof typeof gatePricing];
 
-    factor *= selectedProfile.factor;
-    factor *= selectedSpacing.factor;
-    factor *= selectedFinish.factor;
+    let leafBasePrice = basePrice;
 
-    if (variant === "standard") {
-      const h = Number(selectedHeight.id); // cm
-      const w = Number(selectedWidth.id); // cm
-      const areaFactor = (h / 150) * 0.45 + (w / 500) * 0.5;
-      factor *= 1 + areaFactor * 0.12;
-    } else {
-      const h = typeof customHeight === "number" ? customHeight : 0;
-      const w = typeof customWidth === "number" ? customWidth : 0;
-      if (h && w) {
-        const areaFactor = (h / 150) * 0.45 + (w / 500) * 0.5;
-        factor *= 1 + areaFactor * 0.13;
+    if (pricingForProfile) {
+      if (variant === "standard") {
+        const heightCm = Number(selectedHeight.id); // 120 / 150 / 170 / 200
+        const widthCm = Number(selectedWidth.id); // 400 / 500 / 600
+
+        const widthPricing =
+          pricingForProfile.standard[widthCm as 400 | 500 | 600];
+
+        if (widthPricing) {
+          const heightKey = heightCm <= 120 ? "h120" : "h150Plus";
+          leafBasePrice =
+            heightKey === "h120"
+              ? widthPricing.h120
+              : widthPricing.h150Plus;
+        }
+      } else {
+        // wariant „Na wymiar” – cena za mb szerokości (wysokość nie zmienia ceny)
+        const w = typeof customWidth === "number" ? customWidth : 0;
+
+        if (w) {
+          const runningMeters = w / 100; // szerokość w metrach, np. 450 cm = 4,5 mb
+          leafBasePrice = Math.round(
+            pricingForProfile.mbPrice * runningMeters
+          );
+        }
       }
     }
 
-    if (fillType === "twist") {
-      factor *= 1.05;
+    // 2. Dopłata za strukturę brokat +10% od ceny wyjściowej bramy
+    if (selectedFinish.id === "brokat") {
+      leafBasePrice = Math.round(leafBasePrice * 1.1);
     }
 
+    // 3. Dopłata za dowolny kolor RAL (+ok. 8%)
     if (colorMode === "custom") {
-      factor *= 1.08;
+      leafBasePrice = Math.round(leafBasePrice * 1.08);
     }
 
-    let price = Math.round(basePrice * factor);
-    if (!Number.isFinite(price) || price <= 0) price = basePrice;
+    let price = leafBasePrice;
+
+    // awaryjny fallback, gdyby coś poszło nie tak
+    if (!Number.isFinite(price) || price <= 0) {
+      price = basePrice;
+    }
 
     const qty = Math.max(quantity, 1);
     const total = price * qty;
@@ -329,16 +384,13 @@ export default function StandUpBramaDwuskrzydlowaPage() {
     };
   }, [
     variant,
-    customHeight,
-    customWidth,
-    fillType,
-    colorMode,
-    quantity,
-    selectedProfile.factor,
-    selectedSpacing.factor,
-    selectedFinish.factor,
+    profileId,
     selectedHeight.id,
     selectedWidth.id,
+    customWidth,
+    selectedFinish.id,
+    colorMode,
+    quantity,
   ]);
 
   // DODANIE DO KOSZYKA

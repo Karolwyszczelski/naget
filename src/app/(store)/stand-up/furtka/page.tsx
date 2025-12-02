@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCart } from "../../../CartContext";
 import HeroSlider from "../../../components/HeroSlider";
 import FurtkaModel from "../../../components/FurtkaModel";
+import type { HandleType, HandleMount } from "../../../components/FurtkaModel";
 import type { IconType } from "react-icons";
 import {
   FaBorderAll,
@@ -14,6 +15,7 @@ import {
   FaPalette,
   FaClipboardCheck,
   FaChevronRight,
+  FaDoorOpen,
 } from "react-icons/fa";
 
 /**
@@ -21,20 +23,20 @@ import {
  * ----------------------------------------------------
  */
 
-const basePrice = 3200;
+const basePrice = 2700;
 
 // standardowe wysokości / szerokości (światło przejścia)
 const standardHeights = [
+  { id: "120", label: "120 cm" },
   { id: "150", label: "150 cm" },
-  { id: "160", label: "160 cm" },
   { id: "170", label: "170 cm" },
-  { id: "180", label: "180 cm" },
+  { id: "200", label: "200 cm" },
 ];
 
 const standardWidths = [
   { id: "100", label: "100 cm" },
-  { id: "110", label: "110 cm" },
   { id: "120", label: "120 cm" },
+  { id: "150", label: "150 cm" },
 ];
 
 // profile wypełnienia – dla uproszczenia wszystkie dostępne w PROSTYM i TWIST
@@ -43,6 +45,35 @@ const profiles = [
   { id: "80x40", label: "Profil 80×40 mm", factor: 1.07 },
   { id: "80x80", label: "Profil 80×80 mm", factor: 1.15 },
 ];
+
+// nowy cennik furtki Stand Up (PROSTA i TWIST)
+const gatePricing = {
+  "60x40": {
+    mbPrice: 2900,
+    standard: {
+      100: { h120: 2700, h150Plus: 2900 },
+      120: { h120: 3240, h150Plus: 3480 },
+      150: { h120: 4050, h150Plus: 4350 },
+    },
+  },
+  "80x40": {
+    mbPrice: 3300,
+    standard: {
+      100: { h120: 3200, h150Plus: 3300 },
+      120: { h120: 3800, h150Plus: 4000 },
+      150: { h120: 4800, h150Plus: 4950 },
+    },
+  },
+  "80x80": {
+    mbPrice: 3500,
+    standard: {
+      100: { h120: 3300, h150Plus: 3500 },
+      120: { h120: 3900, h150Plus: 4200 },
+      150: { h120: 4850, h150Plus: 5200 },
+    },
+  },
+} as const;
+
 
 // rozstaw (w przybliżeniu cm)
 const spacingOptionsBase = [
@@ -95,7 +126,7 @@ const finishOptions = [
 type FinishOption = (typeof finishOptions)[number];
 type FinishId = FinishOption["id"];
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 type StepDef = {
   id: Step;
@@ -166,6 +197,74 @@ const upsellItems = [
 
 ];
 
+type HandleId = "none" | "1" | "2" | "3" | "4" | "5" | "6";
+
+const handleOptions: {
+  id: HandleId;
+  label: string;
+  shortLabel: string;
+  price: number; // dopłata za 1 stronę furtki
+  handleType: HandleType;
+}[] = [
+  {
+    id: "none",
+    label: "Bez pochwytu – standardowa klamka / zamek",
+    shortLabel: "Bez pochwytu",
+    price: 0,
+    handleType: "none",
+  },
+  {
+    id: "1",
+    label: "Pochwyt 1 – płaski, malowany na kolor furtki",
+    shortLabel: "Pochwyt 1 – płaski",
+    price: 350,
+    handleType: "long_flat",
+  },
+  {
+    id: "2",
+    label: "Pochwyt 2 – długi, kwadratowy, malowany",
+    shortLabel: "Pochwyt 2 – długi kwadrat",
+    price: 450,
+    handleType: "long_square",
+  },
+  {
+    id: "3",
+    label: "Pochwyt 3 – krótki, kwadratowy, stal nierdzewna",
+    shortLabel: "Pochwyt 3 – krótki inox",
+    price: 900,
+    handleType: "short_square",
+  },
+  {
+    id: "4",
+    label: "Pochwyt 4 – długi, płaski, stal nierdzewna",
+    shortLabel: "Pochwyt 4 – długi inox",
+    price: 1300,
+    handleType: "long_flat",
+  },
+  {
+    id: "5",
+    label: "Pochwyt 5 – krótki, kwadratowy, malowany",
+    shortLabel: "Pochwyt 5 – krótki",
+    price: 350,
+    handleType: "short_square",
+  },
+  {
+    id: "6",
+    label: "Pochwyt 6 – długi, kwadratowy, malowany",
+    shortLabel: "Pochwyt 6 – długi",
+    price: 450,
+    handleType: "long_square",
+  },
+];
+
+// opis stron montażu – wykorzystywany w UI i w koszyku
+const handleMountLabels: Record<HandleMount, string> = {
+  none: "Bez pochwytu",
+  left: "Pochwyt tylko od strony zewnętrznej",
+  right: "Pochwyt tylko od strony ogrodu",
+  both: "Pochwyty z obu stron furtki",
+};
+
 export default function StandUpFurtkaPage() {
   const { addItem } = useCart();
 
@@ -173,18 +272,19 @@ export default function StandUpFurtkaPage() {
   const [step, setStep] = useState<Step>(1);
 
   const handleNextStep = () =>
-    setStep((prev) => (prev < 5 ? ((prev + 1) as Step) : prev));
+  setStep((prev) => (prev < 6 ? ((prev + 1) as Step) : prev));
 
   const handlePrevStep = () =>
     setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
 
   const steps: StepDef[] = [
-    { id: 1, label: "Wypełnienie", icon: FaBorderAll },
-    { id: 2, label: "Profil i rozstaw", icon: FaSlidersH },
-    { id: 3, label: "Wymiary", icon: FaRulerCombined },
-    { id: 4, label: "Kolor i struktura", icon: FaPalette },
-    { id: 5, label: "Podsumowanie", icon: FaClipboardCheck },
-  ];
+  { id: 1, label: "Wypełnienie", icon: FaBorderAll },
+  { id: 2, label: "Profil i rozstaw", icon: FaSlidersH },
+  { id: 3, label: "Wymiary", icon: FaRulerCombined },
+  { id: 4, label: "Pochwyt", icon: FaBorderAll },
+  { id: 5, label: "Kolor i struktura", icon: FaPalette },
+  { id: 6, label: "Podsumowanie", icon: FaClipboardCheck },
+];
 
   // tryb wymiarów
   const [variant, setVariant] = useState<"standard" | "custom">("standard");
@@ -205,15 +305,18 @@ export default function StandUpFurtkaPage() {
   const [spacingId, setSpacingId] = useState<"2" | "4" | "6" | "9">("6");
 
   // kolor RAL + struktura
-  const [colorMode, setColorMode] = useState<"standard" | "custom">(
-    "standard"
-  );
-  const [colorId, setColorId] = useState<string>(baseColors[0].id);
-  const [customRalCode, setCustomRalCode] = useState<string>("");
-  const [finishId, setFinishId] = useState<FinishId>("mat");
+ // kolor RAL + struktura
+const [colorMode, setColorMode] = useState<"standard" | "custom">("standard");
+const [colorId, setColorId] = useState<string>(baseColors[0].id);
+const [customRalCode, setCustomRalCode] = useState<string>("");
+const [finishId, setFinishId] = useState<FinishId>("mat");
 
-  // ilość
-  const [quantity, setQuantity] = useState(1);
+// pochwyty
+const [handleId, setHandleId] = useState<HandleId>("none");
+const [handleMount, setHandleMount] = useState<HandleMount>("none");
+
+// ilość
+const [quantity, setQuantity] = useState(1);
 
   // aktywny widok w galerii (null = model 3D, string = ścieżka zdjęcia)
   const [activeImageSrc, setActiveImageSrc] = useState<string | null>(null);
@@ -224,6 +327,10 @@ export default function StandUpFurtkaPage() {
     standardWidths.find((w) => w.id === widthId) ?? standardWidths[0];
   const selectedProfile =
     profiles.find((p) => p.id === profileId) ?? profiles[0];
+
+    const selectedHandle =
+  handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
+const selectedHandleMountLabel = handleMountLabels[handleMount];
 
   const availableSpacingOptions = useMemo(() => {
   // TWIST – osobna logika:
@@ -274,60 +381,105 @@ export default function StandUpFurtkaPage() {
     colorMode === "standard" ? selectedBaseColor.hex : "#383E4A";
 
   // KALKULACJA CENY
-  const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1.0;
+  const {
+  unitPrice,
+  priceLabel,
+  totalLabel,
+  handlePrice,
+  handlePriceLabel,
+} = useMemo(() => {
+  // 1. Podstawowa cena skrzydła furtki (bez pochwytów, bez dopłat)
+  const pricingForProfile = gatePricing[profileId as keyof typeof gatePricing];
 
-    factor *= selectedProfile.factor;
-    factor *= selectedSpacing.factor;
-    factor *= selectedFinish.factor;
+  let leafBasePrice = basePrice;
 
-    if (variant === "custom") {
+  if (pricingForProfile) {
+    if (variant === "standard") {
+      const heightCm = Number(selectedHeight.id);
+      const widthCm = Number(selectedWidth.id);
+
+      const widthPricing =
+        pricingForProfile.standard[widthCm as 100 | 120 | 150];
+
+      if (widthPricing) {
+        const heightKey = heightCm <= 120 ? "h120" : "h150Plus";
+        leafBasePrice =
+          heightKey === "h120" ? widthPricing.h120 : widthPricing.h150Plus;
+      }
+    } else {
+      // wariant "Na wymiar" – rozmiar niestandardowy, cena za mb szerokości
       const h = typeof customHeight === "number" ? customHeight : 0;
       const w = typeof customWidth === "number" ? customWidth : 0;
 
       if (h && w) {
-        const areaFactor =
-          (h / 160) * 0.4 + (w / 110) * 0.3; // korekta względem standardu
-        factor *= 1 + areaFactor * 0.15;
+        const runningMeters = w / 100; // szerokość w metrach (np. 130 cm = 1,3 mb)
+        leafBasePrice = Math.round(pricingForProfile.mbPrice * runningMeters);
       }
     }
+  }
 
-    if (fillType === "twist") {
-      factor *= 1.05;
-    }
+  // 2. Dopłata za strukturę brokat +10% od ceny wyjściowej furtki (bez pochwytów)
+  if (selectedFinish.id === "brokat") {
+    leafBasePrice = Math.round(leafBasePrice * 1.1);
+  }
 
-    if (colorMode === "custom") {
-      factor *= 1.08;
-    }
+  // 3. Dopłata za dowolny RAL (kolor custom)
+  if (colorMode === "custom") {
+    leafBasePrice = Math.round(leafBasePrice * 1.08);
+  }
 
-    let price = Math.round(basePrice * factor);
-    if (!Number.isFinite(price) || price <= 0) price = basePrice;
+  // 4. Dopłata za pochwyty – bez zmian
+  const handleConfig =
+    handleOptions.find((h) => h.id === handleId) ?? handleOptions[0];
 
-    const qty = Math.max(quantity, 1);
-    const total = price * qty;
+  let handleBasePrice = 0;
+  if (handleConfig.id !== "none" && handleMount !== "none") {
+    const multiplier = handleMount === "both" ? 2 : 1;
+    handleBasePrice = handleConfig.price * multiplier;
+  }
 
-    return {
-      unitPrice: price,
-      priceLabel: price.toLocaleString("pl-PL", {
-        style: "currency",
-        currency: "PLN",
-      }),
-      totalLabel: total.toLocaleString("pl-PL", {
-        style: "currency",
-        currency: "PLN",
-      }),
-    };
-  }, [
-    variant,
-    customHeight,
-    customWidth,
-    fillType,
-    colorMode,
-    quantity,
-    selectedProfile.factor,
-    selectedSpacing.factor,
-    selectedFinish.factor,
-  ]);
+  let price = leafBasePrice + handleBasePrice;
+
+  // awaryjny fallback, gdyby coś poszło nie tak
+  if (!Number.isFinite(price) || price <= 0) {
+    price = basePrice;
+  }
+
+  const qty = Math.max(quantity, 1);
+  const total = price * qty;
+
+  return {
+    unitPrice: price,
+    priceLabel: price.toLocaleString("pl-PL", {
+      style: "currency",
+      currency: "PLN",
+    }),
+    totalLabel: total.toLocaleString("pl-PL", {
+      style: "currency",
+      currency: "PLN",
+    }),
+    handlePrice: handleBasePrice,
+    handlePriceLabel:
+      handleBasePrice > 0
+        ? handleBasePrice.toLocaleString("pl-PL", {
+            style: "currency",
+            currency: "PLN",
+          })
+        : "0,00 zł",
+  };
+}, [
+  variant,
+  heightId,
+  widthId,
+  customHeight,
+  customWidth,
+  profileId,
+  selectedFinish.id,
+  colorMode,
+  quantity,
+  handleId,
+  handleMount,
+]);
 
   // DODANIE DO KOSZYKA
   const handleAddToCart = () => {
@@ -359,6 +511,16 @@ export default function StandUpFurtkaPage() {
         ? selectedBaseColor.id
         : customRalCode || "custom-ral";
 
+        const effectiveHandle =
+    handleId !== "none" && handleMount !== "none"
+      ? selectedHandle
+      : handleOptions[0];
+
+  const handleCartLabel =
+    handleId !== "none" && handleMount !== "none"
+      ? `${effectiveHandle.shortLabel} (${handleMountLabels[handleMount]})`
+      : "Bez pochwytu";
+
     addItem({
       productId: "standup-furtka",
       name: "Furtka Stand Up",
@@ -381,6 +543,13 @@ export default function StandUpFurtkaPage() {
         spacingCm,
         finishId: selectedFinish.id,
         finishLabel: selectedFinish.label,
+
+        // pochwyty
+      handleId,
+      handleLabel: handleCartLabel,
+      handleMount,
+      handleUnitPrice: effectiveHandle.price,
+      handlePrice,
       },
     });
   };
@@ -432,12 +601,14 @@ export default function StandUpFurtkaPage() {
                   </div>
                 ) : (
                   <FurtkaModel
-                    colorHex={previewColorHex}
-                    finish={finishId}
-                    profileId={profileId}
-                    spacingId={spacingId}
-                    fillType={fillType}
-                  />
+  colorHex={previewColorHex}
+  finish={finishId}
+  profileId={profileId}
+  spacingId={spacingId}
+  fillType={fillType}
+  handleType={selectedHandle.handleType}
+  handleMount={handleMount}
+/>
                 )}
 
                 {activeImageSrc && (
@@ -784,11 +955,96 @@ export default function StandUpFurtkaPage() {
                 </section>
               )}
 
-              {/* KROK 4 – KOLOR + STRUKTURA */}
-              {step === 4 && (
+              {/* KROK 4 – POCHWYT */}
+{step === 4 && (
+  <section className="space-y-3 border-t border-border/60 pt-4">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+      Krok 4 · Pochwyt do furtki
+    </p>
+
+    <div className="grid gap-4 md:grid-cols-2">
+      {/* wybór modelu pochwytu */}
+      <div>
+        <p className="text-[12px] font-semibold text-primary mb-1">
+          Model pochwytu
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {handleOptions.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              onClick={() => {
+                setHandleId(h.id);
+                if (h.id === "none") {
+                  setHandleMount("none");
+                } else if (handleMount === "none") {
+                  setHandleMount("left");
+                }
+              }}
+              className={`px-3 py-1 rounded-full border text-[12px] ${
+                handleId === h.id
+                  ? "bg-accent text-white border-accent"
+                  : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+              }`}
+            >
+              {h.shortLabel}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-[11px] text-neutral-500">
+          Ceny pochwytów podane są za 1 stronę skrzydła. Przy montażu z obu
+          stron dopłata liczy się podwójnie.
+        </p>
+      </div>
+
+      {/* wybór strony montażu */}
+      <div>
+        <p className="text-[12px] font-semibold text-primary mb-1">
+          Strona montażu
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(["none", "left", "right", "both"] as HandleMount[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setHandleMount(m)}
+              className={`px-3 py-1 rounded-full border text-[12px] ${
+                handleMount === m
+                  ? "bg-accent text-white border-accent"
+                  : "bg-white text-primary border-border hover:border-accent hover:text-accent"
+              }`}
+            >
+              {handleMountLabels[m]}
+            </button>
+          ))}
+        </div>
+
+        <p className="mt-2 text-[12px] text-neutral-700">
+          Aktualnie:{" "}
+          <strong>
+            {handleId === "none" || handleMount === "none"
+              ? "bez pochwytu (klamka standardowa)"
+              : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel}`}
+          </strong>
+          .
+        </p>
+
+        {handleId !== "none" && handleMount !== "none" && (
+          <p className="text-[11px] text-neutral-500">
+            Orientacyjna dopłata za wybrany pochwyt:{" "}
+            <strong>{handlePriceLabel}</strong> do ceny furtki.
+          </p>
+        )}
+      </div>
+    </div>
+  </section>
+)}
+
+              {/* KROK 5 – KOLOR + STRUKTURA */}
+              {step === 5 && (
                 <section className="space-y-3 border-t border-border/60 pt-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                    Krok 4 · Kolor RAL i struktura
+                    Krok 5 · Kolor RAL i struktura
                   </p>
 
                   {/* Kolory standardowe */}
@@ -894,11 +1150,11 @@ export default function StandUpFurtkaPage() {
                 </section>
               )}
 
-              {/* KROK 5 – ILOŚĆ + PODSUMOWANIE + DODATKI */}
-              {step === 5 && (
+              {/* KROK 6 – ILOŚĆ + PODSUMOWANIE + DODATKI */}
+              {step === 6 && (
                 <section className="space-y-5 border-t border-border/60 pt-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                    Krok 5 · Ilość i podsumowanie
+                    Krok 6 · Ilość i podsumowanie
                   </p>
 
                   <div className="flex items-center gap-3">
@@ -930,6 +1186,14 @@ export default function StandUpFurtkaPage() {
                           {quantity} szt.
                         </strong>
                       </p>
+                       <p>
+    Pochwyt:{" "}
+    <strong className="text-primary">
+      {handleId === "none" || handleMount === "none"
+        ? "bez pochwytu"
+        : `${selectedHandle.shortLabel} – ${selectedHandleMountLabel} (${handlePriceLabel} dopłaty)`}
+    </strong>
+  </p>
                       <p className="text-[11px] text-neutral-500 mt-1 max-w-xs">
                         Uwzględniamy profil, rozstaw, wariant Prosty/Twist,
                         kolor RAL oraz wykończenie powłoki. Cena ma charakter
@@ -1018,7 +1282,7 @@ export default function StandUpFurtkaPage() {
                   Wstecz
                 </button>
 
-                {step < 5 ? (
+                {step < 7 ?(
                   <button
                     type="button"
                     onClick={handleNextStep}

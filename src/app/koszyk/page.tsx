@@ -14,6 +14,7 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 import { useCart } from "../CartContext";
+import Navbar from "../components/navbar";
 
 // MODELE 3D
 import FurtkaModel from "../components/FurtkaModel";
@@ -327,6 +328,8 @@ export default function CartPage() {
   };
 
   return (
+  <>
+    <Navbar />
     <main className="section bg-transparent">
       <div className="container space-y-8">
         {/* NAGŁÓWEK STRONY */}
@@ -1427,5 +1430,6 @@ if (
         )}
       </div>
     </main>
+  </>
   );
 }

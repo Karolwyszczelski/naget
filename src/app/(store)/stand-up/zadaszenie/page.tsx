@@ -18,6 +18,7 @@ import { useCart } from "../../../CartContext";
 import HeroSlider from "../../../components/HeroSlider";
 import ZadaszenieModel from "../../../components/zadaszenie-standupmodel";
 
+
 /**
  * KONFIG – WSPÓLNY Z SERIĄ STAND UP
  * ----------------------------------------------------
@@ -33,6 +34,7 @@ const profiles = [
 
 // rozstaw (w przybliżeniu cm)
 const spacingOptionsBase = [
+  { id: "2", label: "ok. 2 cm – maksymalna prywatność", factor: 1.15 },
   { id: "4", label: "ok. 4 cm – więcej prywatności", factor: 1.08 },
   { id: "6", label: "ok. 6 cm – standard", factor: 1.0 },
   { id: "9", label: "ok. 9 cm – bardziej ażurowe", factor: 0.95 },
@@ -41,7 +43,7 @@ const spacingOptionsBase = [
 const spacingOptionsByProfile: Record<string, string[]> = {
   "60x40": ["4", "6", "9"],
   "80x40": ["4", "6", "9"],
-  "80x80": ["6", "9"],
+  "80x80": ["6"], // dla 80×80 tylko 6 cm
 };
 
 const twistAnglesByProfile: Record<string, number> = {
@@ -165,7 +167,7 @@ export default function StandUpZadaszeniePage() {
   const [profileId, setProfileId] = useState<"60x40" | "80x40" | "80x80">(
     "60x40"
   );
-  const [spacingId, setSpacingId] = useState<"4" | "6" | "9">("6");
+  const [spacingId, setSpacingId] = useState<"2" | "4" | "6" | "9">("6");
 
   // KOLOR / STRUKTURA
   const [colorMode, setColorMode] = useState<ColorMode>("standard");
@@ -189,27 +191,32 @@ export default function StandUpZadaszeniePage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-    let allowed =
-      spacingOptionsByProfile[selectedProfile.id] ??
-      spacingOptionsBase.map((s) => s.id);
-
-    // DLA TWIST + profili 80×40 / 80×80 – TYLKO rozstaw 6 cm (spójnie z furtką/bramami)
-    if (
-      fillType === "twist" &&
-      (selectedProfile.id === "80x40" || selectedProfile.id === "80x80")
-    ) {
-      allowed = ["6"];
+  // TWIST – osobna logika:
+  // 60×40 → tylko 2 cm
+  // 80×40 → tylko 2 cm
+  // 80×80 → tylko 6 cm
+  if (fillType === "twist") {
+    if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
+      return spacingOptionsBase.filter((s) => s.id === "2");
     }
-
-    return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-  }, [selectedProfile.id, fillType]);
-
-  useEffect(() => {
-    const allowedIds = availableSpacingOptions.map((s) => s.id);
-    if (!allowedIds.includes(spacingId)) {
-      setSpacingId(allowedIds[0] as "4" | "6" | "9");
+    if (selectedProfile.id === "80x80") {
+      return spacingOptionsBase.filter((s) => s.id === "6");
     }
-  }, [availableSpacingOptions, spacingId]);
+  }
+
+  // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
+  const allowed =
+    spacingOptionsByProfile[selectedProfile.id] ??
+    spacingOptionsBase.map((s) => s.id);
+
+  return spacingOptionsBase.filter((s) => allowed.includes(s.id));
+}, [selectedProfile.id, fillType]);
+useEffect(() => {
+  const allowedIds = availableSpacingOptions.map((s) => s.id);
+  if (!allowedIds.includes(spacingId)) {
+    setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
+  }
+}, [availableSpacingOptions, spacingId]);
 
   // po zmianie PROSTA/TWIST reset na model 3D
   useEffect(() => {

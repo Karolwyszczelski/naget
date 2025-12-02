@@ -2,14 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-// @ts-ignore – jeśli TS marudzi na ścieżkę, możesz dodać ten komentarz
+// @ts-ignore
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { FaPause, FaPlay, FaSyncAlt } from "react-icons/fa";
 
 type Finish = "mat" | "brokat";
-type ProfileId = "60x40" | "80x40" | "80x80";
-type SpacingId = "2" | "4" | "6" | "9";
+export type ProfileId = "60x40" | "80x40" | "80x80";
+export type SpacingId = "2" | "4" | "6" | "9";
 type FillType = "prosta" | "twist";
+
+// typy do pochwytów
+export type HandleType = "long_square" | "short_square" | "long_flat" | "none";
+export type HandleMount = "left" | "right" | "both" | "none";
 
 type Props = {
   colorHex: string;
@@ -17,6 +21,8 @@ type Props = {
   profileId: ProfileId;
   spacingId: SpacingId;
   fillType: FillType;
+  handleType?: HandleType;
+  handleMount?: HandleMount;
 };
 
 const POST_HEIGHT = 1.8;
@@ -45,6 +51,8 @@ export default function FurtkaModel({
   profileId,
   spacingId,
   fillType,
+  handleType = "none",
+  handleMount = "none",
 }: Props) {
   const outerRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -52,6 +60,7 @@ export default function FurtkaModel({
   const metalMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const gateLeafRef = useRef<THREE.Group | null>(null);
   const slatsRef = useRef<THREE.Mesh[]>([]);
+  const handlesRef = useRef<THREE.Object3D[]>([]);
   const controlsRef = useRef<any>(null);
 
   const [isGateAnimating, setIsGateAnimating] = useState(true);
@@ -69,17 +78,15 @@ export default function FurtkaModel({
     const height = container.clientHeight || width * (3 / 4);
 
     const scene = new THREE.Scene();
-    // brak własnego tła – korzystamy z tła strony (pattern naget)
     scene.background = null;
     scene.fog = null;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(3, 2.5, 4);
+    camera.position.set(2.5, 2.0, 3.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.shadowMap.enabled = true;
-    // przezroczyste tło – będzie widać pattern z body (tlo.jpg)
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
@@ -90,7 +97,7 @@ export default function FurtkaModel({
     controls.autoRotateSpeed = 0.6;
     controlsRef.current = controls;
 
-    // materiały
+    // materiał główny furtki
     const metalMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(colorHex || "#363636"),
       roughness: finish === "mat" ? 0.7 : 0.4,
@@ -104,7 +111,7 @@ export default function FurtkaModel({
       roughness: 0.2,
     });
 
-    // grupa furtki
+    // GRUPA FURTKI
     const gateGroup = new THREE.Group();
     scene.add(gateGroup);
 
@@ -129,7 +136,7 @@ export default function FurtkaModel({
     gateGroup.add(gateLeaf);
     gateLeafRef.current = gateLeaf;
 
-    // belki i rama – nie zależą od profilu/rozstawu
+    // rama
     const createBar = (
       w: number,
       h: number,
@@ -198,10 +205,10 @@ export default function FurtkaModel({
     gateLeaf.add(hinge1);
     gateLeaf.add(hinge2);
 
-    // podłoga – delikatna, jasna, bez siatki
+    // podłoga
     const planeGeo = new THREE.PlaneGeometry(6, 6);
     const planeMat = new THREE.MeshStandardMaterial({
-      color: 0xe5edf9, // jasne, neutralne tło pod furtką
+      color: 0xe5edf9,
       roughness: 1,
       metalness: 0,
     });
@@ -222,7 +229,7 @@ export default function FurtkaModel({
     dirLight.shadow.mapSize.height = 1024;
     scene.add(dirLight);
 
-    // animacja otwierania
+    // animacja
     let time = 0;
     let frameId: number;
 
@@ -266,9 +273,9 @@ export default function FurtkaModel({
       }
       controlsRef.current = null;
     };
-  }, []); // init tylko raz
+  }, []);
 
-  // aktualizacja materiału (kolor + struktura)
+  // aktualizacja materiału
   useEffect(() => {
     if (!metalMaterialRef.current) return;
     metalMaterialRef.current.color.set(colorHex || "#363636");
@@ -281,30 +288,28 @@ export default function FurtkaModel({
     }
   }, [colorHex, finish]);
 
-  // aktualizacja SZCZEBLI (profil, rozstaw, twist)
+  // aktualizacja SZCZEBLI
   useEffect(() => {
     const gateLeaf = gateLeafRef.current;
     const material = metalMaterialRef.current;
     if (!gateLeaf || !material) return;
 
-    // usuń stare szczeble
     slatsRef.current.forEach((mesh) => {
       gateLeaf.remove(mesh);
     });
     slatsRef.current = [];
 
-    const profileDims =
-      PROFILE_DIMENSIONS[profileId as ProfileId] || PROFILE_DIMENSIONS["60x40"];
+    const profileDims = PROFILE_DIMENSIONS[profileId] || PROFILE_DIMENSIONS["60x40"];
     const slatWidth = profileDims.slatWidth;
     const slatDepth = profileDims.slatDepth;
     const slatHeight = POST_HEIGHT - 0.1;
 
     const spacingCm = parseFloat(spacingId) || 6;
-    const gap = spacingCm / 100; // cm -> m
+    const gap = spacingCm / 100;
 
     const angleDeg =
       fillType === "twist"
-        ? TWIST_ANGLES[profileId as ProfileId] || 45
+        ? TWIST_ANGLES[profileId] || 45
         : 0;
     const angleRad = (angleDeg * Math.PI) / 180;
 
@@ -323,6 +328,99 @@ export default function FurtkaModel({
     }
   }, [profileId, spacingId, fillType]);
 
+  // aktualizacja POCHWYTÓW
+  useEffect(() => {
+    const gateLeaf = gateLeafRef.current;
+    if (!gateLeaf) return;
+
+    // stalowy / nierdzewny charakter pochwytów
+    const handleMaterial = new THREE.MeshStandardMaterial({
+      color: 0xeeeeee,
+      roughness: 0.2,
+      metalness: 0.8,
+    });
+
+    // usuń poprzednie
+    handlesRef.current.forEach((obj) => gateLeaf.remove(obj));
+    handlesRef.current = [];
+
+    if (handleType === "none" || handleMount === "none") return;
+
+    const createHandleSide = (isFront: boolean) => {
+      const zOffset = isFront ? 0.06 : -0.06;
+      const xPos = GATE_WIDTH - 0.1; // ok. 10 cm od krawędzi przy zamku
+      const centerY = (POST_HEIGHT - 0.1) / 2 + 0.05;
+
+      const handleGroup = new THREE.Group();
+      handleGroup.position.set(xPos, centerY, 0);
+
+      if (handleType === "long_square") {
+        // długi kwadratowy (np. 2, 4, 5 z ekspozycji)
+        const barGeo = new THREE.BoxGeometry(0.03, 1.2, 0.03);
+        const bar = new THREE.Mesh(barGeo, handleMaterial);
+        bar.position.set(0, 0, zOffset + (isFront ? 0.04 : -0.04));
+        bar.castShadow = true;
+        handleGroup.add(bar);
+
+        const standoffGeo = new THREE.BoxGeometry(0.02, 0.02, 0.04);
+        const topStandoff = new THREE.Mesh(standoffGeo, handleMaterial);
+        topStandoff.position.set(0, 0.4, zOffset + (isFront ? 0.02 : -0.02));
+        const botStandoff = new THREE.Mesh(standoffGeo, handleMaterial);
+        botStandoff.position.set(0, -0.4, zOffset + (isFront ? 0.02 : -0.02));
+        handleGroup.add(topStandoff);
+        handleGroup.add(botStandoff);
+      } else if (handleType === "short_square") {
+        // krótszy kwadratowy (np. 3)
+        const barGeo = new THREE.BoxGeometry(0.025, 0.6, 0.025);
+        const bar = new THREE.Mesh(barGeo, handleMaterial);
+        bar.position.set(0, 0, zOffset + (isFront ? 0.04 : -0.04));
+        bar.castShadow = true;
+        handleGroup.add(bar);
+
+        const standoffGeo = new THREE.BoxGeometry(0.02, 0.02, 0.04);
+        const topStandoff = new THREE.Mesh(standoffGeo, handleMaterial);
+        topStandoff.position.set(0, 0.2, zOffset + (isFront ? 0.02 : -0.02));
+        const botStandoff = new THREE.Mesh(standoffGeo, handleMaterial);
+        botStandoff.position.set(0, -0.2, zOffset + (isFront ? 0.02 : -0.02));
+        handleGroup.add(topStandoff);
+        handleGroup.add(botStandoff);
+      } else if (handleType === "long_flat") {
+        // płaski wygięty (np. 1)
+        const barGeo = new THREE.BoxGeometry(0.04, 1.4, 0.01);
+        const bar = new THREE.Mesh(barGeo, handleMaterial);
+        bar.position.set(0, 0, zOffset + (isFront ? 0.05 : -0.05));
+        handleGroup.add(bar);
+
+        const bendGeo = new THREE.BoxGeometry(0.04, 0.01, 0.05);
+        const topBend = new THREE.Mesh(bendGeo, handleMaterial);
+        topBend.position.set(0, 0.7, zOffset + (isFront ? 0.025 : -0.025));
+        const botBend = new THREE.Mesh(bendGeo, handleMaterial);
+        botBend.position.set(0, -0.7, zOffset + (isFront ? 0.025 : -0.025));
+        handleGroup.add(topBend);
+        handleGroup.add(botBend);
+      }
+
+      return handleGroup;
+    };
+
+    if (handleMount === "left" || handleMount === "both") {
+      const frontHandle = createHandleSide(true);
+      if (frontHandle) {
+        gateLeaf.add(frontHandle);
+        handlesRef.current.push(frontHandle);
+      }
+    }
+
+    if (handleMount === "right" || handleMount === "both") {
+      const backHandle = createHandleSide(false);
+      if (backHandle) {
+        gateLeaf.add(backHandle);
+        handlesRef.current.push(backHandle);
+      }
+    }
+  }, [handleType, handleMount]);
+
+  // UI – sterowanie ruchem i autorotacją
   const toggleGateAnimation = () => {
     setIsGateAnimating((prev) => {
       const next = !prev;
@@ -343,7 +441,6 @@ export default function FurtkaModel({
   };
 
   const handleWrapperClick = () => {
-    // kliknięcie w obszar 3D pauzuje/wznawia bramkę
     toggleGateAnimation();
   };
 
@@ -358,9 +455,8 @@ export default function FurtkaModel({
         className="absolute inset-0 cursor-grab active:cursor-grabbing"
       />
 
-      {/* PRZYCISKI STEROWANIA – prawy górny róg */}
+      {/* PRZYCISKI – prawy górny róg */}
       <div className="absolute right-2 top-2 z-10 flex flex-col gap-2">
-        {/* start/stop ruchu furtki */}
         <button
           type="button"
           onClick={(e) => {
@@ -372,16 +468,10 @@ export default function FurtkaModel({
               ? "bg-white text-accent border-accent"
               : "bg-white/80 text-neutral-600 border-border"
           }`}
-          aria-label={
-            isGateAnimating
-              ? "Zatrzymaj ruch furtki"
-              : "Włącz ruch furtki"
-          }
         >
           {isGateAnimating ? <FaPause /> : <FaPlay />}
         </button>
 
-        {/* start/stop auto-rotacji widoku */}
         <button
           type="button"
           onClick={(e) => {
@@ -393,26 +483,23 @@ export default function FurtkaModel({
               ? "bg-white text-accent border-accent"
               : "bg-white/80 text-neutral-600 border-border"
           }`}
-          aria-label={
-            isAutoRotating
-              ? "Zatrzymaj automatyczny obrót widoku"
-              : "Włącz automatyczny obrót widoku"
-          }
         >
           <FaSyncAlt />
         </button>
       </div>
 
-      {/* LEGENDA – lewy dolny róg, mała i dyskretna */}
+      {/* LEGENDA – lewy dolny róg */}
       <div className="pointer-events-none absolute left-2 bottom-2 z-10 max-w-[75%] max-h-[20%] rounded-xl bg-white/45 backdrop-blur px-2 py-1 text-[4px] leading-tight text-white">
-        <p className="font-semibold uppercase mb-1 text-[8px]">
-          Sterowanie
-        </p>
+        <p className="font-semibold uppercase mb-1 text-[8px]">Sterowanie</p>
         <p className="text-[7px]">• Lewy przycisk myszy – obrót widoku</p>
-  <p className="text-[7px]">• Prawy przycisk / scroll – przesuwanie i zoom</p>
-  <p className="text-[7px]">• Kliknij w model lub ikonę pauzy – start/stop ruchu furtki</p>
-  <p className="text-[7px]">• Ikona strzałki – włącz/wyłącz autoobrót kamery</p>
-</div>
+        <p className="text-[7px]">• Prawy przycisk / scroll – przesuwanie i zoom</p>
+        <p className="text-[7px]">
+          • Kliknij w model lub ikonę pauzy – start/stop ruchu furtki
+        </p>
+        <p className="text-[7px]">
+          • Ikona strzałki – włącz/wyłącz autoobrót kamery
+        </p>
+      </div>
     </div>
   );
 }
