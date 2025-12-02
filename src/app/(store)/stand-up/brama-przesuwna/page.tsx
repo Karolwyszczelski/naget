@@ -26,17 +26,50 @@ const basePrice = 11000;
 
 // standardowe wysokości / szerokości (światło bramy w mm)
 const standardHeights = [
-  { id: "140", label: "140 cm" },
+  { id: "120", label: "120 cm" },
   { id: "150", label: "150 cm" },
-  { id: "160", label: "160 cm" },
-  { id: "180", label: "180 cm" },
+  { id: "170", label: "170 cm" },
+  { id: "200", label: "200 cm" },
 ];
 
 const standardWidths = [
+  { id: "300", label: "300 cm (3000 mm)" },
   { id: "400", label: "400 cm (4000 mm)" },
   { id: "500", label: "500 cm (5000 mm)" },
   { id: "600", label: "600 cm (6000 mm)" },
 ];
+
+// sztywny cennik bramy przesuwnej Stand Up (PROSTA i TWIST)
+const gatePricing = {
+  "60x40": {
+    // niestandardowe szerokości – cena za 1 mb światła bramy
+    mbPrice: 3200,
+    standard: {
+      300: { h120: 9600, h150Plus: 10000 },
+      400: { h120: 11600, h150Plus: 12000 },
+      500: { h120: 14600, h150Plus: 15000 },
+      600: { h120: 17500, h150Plus: 18000 },
+    },
+  },
+  "80x40": {
+    mbPrice: 3500,
+    standard: {
+      300: { h120: 10200, h150Plus: 10500 },
+      400: { h120: 13600, h150Plus: 14000 },
+      500: { h120: 17000, h150Plus: 17500 },
+      600: { h120: 20200, h150Plus: 21000 },
+    },
+  },
+  "80x80": {
+    mbPrice: 3900,
+    standard: {
+      300: { h120: 11400, h150Plus: 11700 },
+      400: { h120: 15100, h150Plus: 15600 },
+      500: { h120: 18800, h150Plus: 19500 },
+      600: { h120: 22800, h150Plus: 23400 },
+    },
+  },
+} as const;
 
 // profile wypełnienia – jak w furtce
 const profiles = [
@@ -190,7 +223,7 @@ export default function StandUpBramaPrzesuwnaPage() {
 
   // standard
   const [heightId, setHeightId] = useState(standardHeights[1].id); // 150
-  const [widthId, setWidthId] = useState(standardWidths[1].id); // 500
+  const [widthId, setWidthId] = useState(standardWidths[2].id); // 500
 
   // na wymiar
   const [customHeight, setCustomHeight] = useState<number | "">("");
@@ -271,42 +304,59 @@ export default function StandUpBramaPrzesuwnaPage() {
   // kolor do podglądu (3D)
   const previewColorHex =
     colorMode === "standard" ? selectedBaseColor.hex : "#383E4A";
-
-  // KALKULACJA CENY – podobnie jak w furtce, ale mocniej reaguje na szerokość
+ // KALKULACJA CENY – sztywny cennik + dopłaty
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1.0;
+    // 1. Podstawowa cena bramy (bez dopłat za brokat / RAL)
+    const pricingForProfile =
+      gatePricing[profileId as keyof typeof gatePricing];
 
-    factor *= selectedProfile.factor;
-    factor *= selectedSpacing.factor;
-    factor *= selectedFinish.factor;
+    let leafBasePrice = basePrice;
 
-    // wpływ wymiarów
-    if (variant === "standard") {
-      const h = Number(selectedHeight.id); // cm
-      const w = Number(selectedWidth.id); // cm
-      const areaFactor =
-        (h / 150) * 0.5 + (w / 500) * 0.6; // brama mocniej zależy od szerokości
-      factor *= 1 + areaFactor * 0.12;
-    } else {
-      const h = typeof customHeight === "number" ? customHeight : 0;
-      const w = typeof customWidth === "number" ? customWidth : 0;
-      if (h && w) {
-        const areaFactor =
-          (h / 150) * 0.5 + (w / 500) * 0.6;
-        factor *= 1 + areaFactor * 0.14;
+    if (pricingForProfile) {
+      if (variant === "standard") {
+        const heightCm = Number(selectedHeight.id); // 120 / 150 / 170 / 200
+        const widthCm = Number(selectedWidth.id); // 300 / 400 / 500 / 600
+
+        const widthPricing =
+          pricingForProfile.standard[widthCm as 300 | 400 | 500 | 600];
+
+        if (widthPricing) {
+          // 120 cm ma swoją cenę, 150+ (150/170/200) wspólną
+          const heightKey = heightCm <= 120 ? "h120" : "h150Plus";
+          leafBasePrice =
+            heightKey === "h120"
+              ? widthPricing.h120
+              : widthPricing.h150Plus;
+        }
+      } else {
+        // wariant „Na wymiar” – cena za mb szerokości (wysokość nie zmienia ceny)
+        const w = typeof customWidth === "number" ? customWidth : 0;
+
+        if (w) {
+          const runningMeters = w / 100; // szerokość w metrach, np. 450 cm = 4,5 mb
+          leafBasePrice = Math.round(
+            pricingForProfile.mbPrice * runningMeters
+          );
+        }
       }
     }
 
-    if (fillType === "twist") {
-      factor *= 1.05;
+    // 2. Dopłata za strukturę brokat +10% od ceny wyjściowej bramy
+    if (selectedFinish.id === "brokat") {
+      leafBasePrice = Math.round(leafBasePrice * 1.1);
     }
 
+    // 3. Dopłata za dowolny kolor RAL (+ok. 8%)
     if (colorMode === "custom") {
-      factor *= 1.08;
+      leafBasePrice = Math.round(leafBasePrice * 1.08);
     }
 
-    let price = Math.round(basePrice * factor);
-    if (!Number.isFinite(price) || price <= 0) price = basePrice;
+    let price = leafBasePrice;
+
+    // awaryjny fallback, gdyby coś poszło nie tak
+    if (!Number.isFinite(price) || price <= 0) {
+      price = basePrice;
+    }
 
     const qty = Math.max(quantity, 1);
     const total = price * qty;
@@ -324,16 +374,13 @@ export default function StandUpBramaPrzesuwnaPage() {
     };
   }, [
     variant,
-    customHeight,
-    customWidth,
-    fillType,
-    colorMode,
-    quantity,
-    selectedProfile.factor,
-    selectedSpacing.factor,
-    selectedFinish.factor,
+    profileId,
     selectedHeight.id,
     selectedWidth.id,
+    customWidth,
+    selectedFinish.id,
+    colorMode,
+    quantity,
   ]);
 
   // DODANIE DO KOSZYKA

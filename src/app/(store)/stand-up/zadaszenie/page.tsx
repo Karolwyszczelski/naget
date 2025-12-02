@@ -1,4 +1,4 @@
-// app/stand-up/zadaszenie/page.tsx 
+// app/stand-up/zadaszenie/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,19 +18,26 @@ import { useCart } from "../../../CartContext";
 import HeroSlider from "../../../components/HeroSlider";
 import ZadaszenieModel from "../../../components/zadaszenie-standupmodel";
 
-
 /**
  * KONFIG – WSPÓLNY Z SERIĄ STAND UP
  * ----------------------------------------------------
  */
 
-const basePrice = 4200; // orientacyjna baza dla zadaszenia
+// orientacyjna baza (fallback) – realna cena ustawiana niżej per profil
+const basePrice = 6900;
 
 const profiles = [
   { id: "60x40", label: "Profil 60×40 mm", factor: 1.0 },
   { id: "80x40", label: "Profil 80×40 mm", factor: 1.07 },
   { id: "80x80", label: "Profil 80×80 mm", factor: 1.15 },
 ];
+
+// SZTYWNY CENNIK ZADASZENIA – PROSTA I TWIST, rozstaw bez wpływu na cenę
+const canopyBaseByProfile: Record<"60x40" | "80x40" | "80x80", number> = {
+  "60x40": 6900,
+  "80x40": 7400,
+  "80x80": 7900,
+};
 
 // rozstaw (w przybliżeniu cm)
 const spacingOptionsBase = [
@@ -72,7 +79,7 @@ const finishOptions = [
   {
     id: "brokat",
     label: "Struktura drobny brokat",
-    factor: 1.03,
+    factor: 1.03, // nie używamy w cenie – logika brokatu jest poniżej (+10%)
     swatch: "/textures/struktura-brokat.png",
   },
 ] as const;
@@ -116,7 +123,7 @@ const upsellItems = [
     description:
       "Słupek pod wideodomofon, skrzynkę i automatykę – w tej samej linii co zadaszenie.",
     href: "/stand-up/slupek-multimedialny",
-    image: "/products/standup-slup-multimedialny.jpg", // podmień, jeśli masz inną nazwę pliku
+    image: "/products/standup-slup-multimedialny.jpg",
     badge: "Słupek multimedialny",
   },
   {
@@ -191,32 +198,33 @@ export default function StandUpZadaszeniePage() {
     profiles.find((p) => p.id === profileId) ?? profiles[0];
 
   const availableSpacingOptions = useMemo(() => {
-  // TWIST – osobna logika:
-  // 60×40 → tylko 2 cm
-  // 80×40 → tylko 2 cm
-  // 80×80 → tylko 6 cm
-  if (fillType === "twist") {
-    if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
-      return spacingOptionsBase.filter((s) => s.id === "2");
+    // TWIST – osobna logika:
+    // 60×40 → tylko 2 cm
+    // 80×40 → tylko 2 cm
+    // 80×80 → tylko 6 cm
+    if (fillType === "twist") {
+      if (selectedProfile.id === "60x40" || selectedProfile.id === "80x40") {
+        return spacingOptionsBase.filter((s) => s.id === "2");
+      }
+      if (selectedProfile.id === "80x80") {
+        return spacingOptionsBase.filter((s) => s.id === "6");
+      }
     }
-    if (selectedProfile.id === "80x80") {
-      return spacingOptionsBase.filter((s) => s.id === "6");
+
+    // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
+    const allowed =
+      spacingOptionsByProfile[selectedProfile.id] ??
+      spacingOptionsBase.map((s) => s.id);
+
+    return spacingOptionsBase.filter((s) => allowed.includes(s.id));
+  }, [selectedProfile.id, fillType]);
+
+  useEffect(() => {
+    const allowedIds = availableSpacingOptions.map((s) => s.id);
+    if (!allowedIds.includes(spacingId)) {
+      setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
     }
-  }
-
-  // PROSTA – wg spacingOptionsByProfile (dla 80×80 już tylko 6 cm)
-  const allowed =
-    spacingOptionsByProfile[selectedProfile.id] ??
-    spacingOptionsBase.map((s) => s.id);
-
-  return spacingOptionsBase.filter((s) => allowed.includes(s.id));
-}, [selectedProfile.id, fillType]);
-useEffect(() => {
-  const allowedIds = availableSpacingOptions.map((s) => s.id);
-  if (!allowedIds.includes(spacingId)) {
-    setSpacingId(allowedIds[0] as "2" | "4" | "6" | "9");
-  }
-}, [availableSpacingOptions, spacingId]);
+  }, [availableSpacingOptions, spacingId]);
 
   // po zmianie PROSTA/TWIST reset na model 3D
   useEffect(() => {
@@ -243,21 +251,23 @@ useEffect(() => {
       ? "Zadaszenie nad furtkę Stand Up – wersja prosta"
       : "Zadaszenie nad furtkę Stand Up Twist – wizualizacja";
 
-  // CENA
+  // CENA – sztywny cennik per profil + brokat + kolor RAL
   const { unitPrice, priceLabel, totalLabel } = useMemo(() => {
-    let factor = 1.0;
-    factor *= selectedProfile.factor;
-    factor *= selectedSpacing.factor;
-    factor *= selectedFinish.factor;
+    // 1. Bazowa cena zadaszenia wg profilu
+    const baseForProfile = canopyBaseByProfile[profileId] ?? basePrice;
+    let price = baseForProfile;
 
-    if (fillType === "twist") {
-      factor *= 1.04;
+    // 2. Brokat: +10% od ceny bazowej
+    if (selectedFinish.id === "brokat") {
+      price = Math.round(price * 1.1);
     }
+
+    // 3. Dowolny kolor RAL – zostawiam +6% jak w Twoim pierwotnym kodzie
     if (colorMode === "custom") {
-      factor *= 1.06;
+      price = Math.round(price * 1.06);
     }
 
-    let price = Math.round(basePrice * factor);
+    // fallback
     if (!Number.isFinite(price) || price <= 0) {
       price = basePrice;
     }
@@ -276,14 +286,7 @@ useEffect(() => {
         currency: "PLN",
       }),
     };
-  }, [
-    selectedProfile.factor,
-    selectedSpacing.factor,
-    selectedFinish.factor,
-    fillType,
-    colorMode,
-    quantity,
-  ]);
+  }, [profileId, selectedFinish.id, colorMode, quantity]);
 
   // DODANIE DO KOSZYKA
   const handleAddToCart = () => {
