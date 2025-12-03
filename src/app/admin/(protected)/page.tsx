@@ -10,6 +10,8 @@ import {
   FaUserShield,
   FaArrowRight,
 } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { createClient } from "../../../../untils/supabase/client";
 
 export default function AdminHomePage() {
   return (

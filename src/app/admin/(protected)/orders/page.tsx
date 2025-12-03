@@ -3,6 +3,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { createClient } from "../../../../../untils/supabase/client";
 
 async function adminFetch(input: RequestInfo, init: RequestInit = {}) {
   const {
@@ -176,6 +178,25 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const router = useRouter();
+const supabase = createClient();
+
+const adminFetch = async (input: RequestInfo, init: RequestInit = {}) => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+
+  if (!token) {
+    router.replace("/admin/login");
+    throw new Error("NO_SESSION");
+  }
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  headers.set("Accept", "application/json");
+
+  return fetch(input, { ...init, headers });
+};
+
   const [detailsCache, setDetailsCache] = useState<Record<string, OrderDetail>>(
     {}
   );
@@ -195,10 +216,15 @@ export default function AdminOrdersPage() {
     const loadOrders = async () => {
       setLoading(true);
       try {
-        const res = await adminFetch("/api/admin/orders", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        });
+        const res = await adminFetch("/api/admin/orders", { method: "GET" });
+
+if (res.status === 401) {
+  router.replace("/admin/login");
+  return;
+}
+if (res.status === 403) {
+  throw new Error("BRAK_UPRAWNIEN_ADMIN");
+}
 
         if (!res.ok) {
           throw new Error("Nie udało się pobrać zamówień.");
