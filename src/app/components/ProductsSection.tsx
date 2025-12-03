@@ -27,7 +27,7 @@ const products: ProductCard[] = [
     type: "furtka",
     description:
       "Furtka aluminiowa z pionowych profili – dostępna w wersji prostej i twist, także na wymiar.",
-    fromPrice: "od 3 200 zł",
+    fromPrice: "od 2 700 zł",
     href: "/stand-up/furtka",
     image: "/products/furtka-stand.png",
   },
@@ -38,7 +38,7 @@ const products: ProductCard[] = [
     type: "brama",
     description:
       "Brama przesuwna Stand Up dopasowana do ogrodzeń panelowych i nowoczesnych frontów.",
-    fromPrice: "od 7 900 zł",
+    fromPrice: "od 11 000 zł",
     href: "/stand-up/brama-przesuwna",
     image: "/products/standup-brama-jednos.png",
   },
@@ -49,7 +49,7 @@ const products: ProductCard[] = [
     type: "brama",
     description:
       "Brama przesuwna Stand Up dopasowana do ogrodzeń panelowych i nowoczesnych frontów.",
-    fromPrice: "od 7 900 zł",
+    fromPrice: "od 9 500 zł",
     href: "/stand-up/brama-dwuskrzydlowa",
     image: "/products/standup-brama-dwuskrzydlowa1.png",
   },
@@ -60,7 +60,7 @@ const products: ProductCard[] = [
     type: "furtka",
     description:
       "Pełna furtka z paneli Slab Fence – więcej prywatności przy zachowaniu lekkiej formy.",
-    fromPrice: "od 3 600 zł",
+    fromPrice: "od 4 140 zł",
     href: "/slab-fence/furtka",
     image: "/products/furtka-slab.png",
   },
@@ -71,7 +71,7 @@ const products: ProductCard[] = [
     type: "brama",
     description:
       "Pełna brama przesuwna z serii Slab Fence – idealna do zabudowy frontowej.",
-    fromPrice: "od 8 400 zł",
+    fromPrice: "od 13 500 zł",
     href: "/slab-fence/brama-przesuwna",
     image: "/products/brama-slab1.png",
   },
@@ -82,7 +82,7 @@ const products: ProductCard[] = [
     type: "brama",
     description:
       "Pełna brama przesuwna z serii Slab Fence – idealna do zabudowy frontowej.",
-    fromPrice: "od 8 400 zł",
+    fromPrice: "od 12 370 zł",
     href: "/slab-fence/brama-dwuskrzydlowa",
     image: "/products/slab-brama-dwuskrzydlowa.png",
   },
@@ -93,7 +93,7 @@ const products: ProductCard[] = [
     type: "zadaszenie",
     description:
       "Zadaszenie nad furtkę Stand Up – spójny design z resztą ogrodzenia.",
-    fromPrice: "od 1 200 zł",
+    fromPrice: "od 6 900 zł",
     href: "/stand-up/zadaszenie",
     image: "/products/zadaszenie-stand.png",
   },
@@ -104,7 +104,7 @@ const products: ProductCard[] = [
     type: "zadaszenie",
     description:
       "Zadaszenie nad furtkę Slab Fence – spójny design z resztą ogrodzenia.",
-    fromPrice: "od 1 200 zł",
+    fromPrice: "od 12 000 zł",
     href: "/slab-fence/zadaszenie",
     image: "/products/slab-zadaszenie.png",
   },
@@ -115,7 +115,7 @@ const products: ProductCard[] = [
     type: "dodatek",
     description:
       "Napędy, fotokomórki, akcesoria – kompletna automatyka dopasowana do bram Naget.",
-    fromPrice: "od 1 500 zł",
+    fromPrice: "od 150 zł",
     href: "/dodatki/automatyka",
     image: "/products/addons-automat.png",
   },
@@ -126,7 +126,7 @@ const products: ProductCard[] = [
     type: "dodatek",
     description:
       "Drewutnie ogrodowe – praktyczne i estetyczne rozwiązanie do przechowywania drewna.",
-    fromPrice: "od 1 500 zł",
+    fromPrice: "od 5 400 zł",
     href: "/dodatki/drewutnie",
     image: "/products/addons-drewutnie.png",
   },
