@@ -1,4 +1,4 @@
-// app/admin/page.tsx
+// src/app/admin/(protected)/page.tsx
 import Link from "next/link";
 import {
   FaShoppingBag,
@@ -10,8 +10,6 @@ import {
   FaUserShield,
   FaArrowRight,
 } from "react-icons/fa";
-import { useRouter } from "next/navigation";
-import { createClient } from "../../../../untils/supabase/client";
 
 export default function AdminHomePage() {
   return (
@@ -26,8 +24,8 @@ export default function AdminHomePage() {
             Dashboard
           </h1>
           <p className="text-[13px] md:text-[14px] text-neutral-700 max-w-xl">
-            Szybki podgląd tego, co dzieje się w sklepie Naget. Stąd
-            przejdziesz do zamówień, produktów i ustawień technicznych.
+            Szybki podgląd tego, co dzieje się w sklepie Naget. Stąd przejdziesz
+            do zamówień, produktów i ustawień technicznych.
           </p>
         </div>
 
@@ -139,12 +137,10 @@ export default function AdminHomePage() {
             href="/admin/orders?tab=new"
             className="rounded-3xl bg-white border border-border p-4 shadow-soft hover:border-accent hover:shadow-[0_12px_30px_rgba(62,82,164,0.18)] transition-all"
           >
-            <p className="font-semibold text-primary">
-              Otwórz nowe zamówienia
-            </p>
+            <p className="font-semibold text-primary">Otwórz nowe zamówienia</p>
             <p className="mt-1 text-neutral-700">
-              Lista zamówień ze statusem <strong>Nowe</strong> – do
-              przejrzenia i kontaktu z klientem.
+              Lista zamówień ze statusem <strong>Nowe</strong> – do przejrzenia i
+              kontaktu z klientem.
             </p>
           </Link>
 
@@ -165,9 +161,7 @@ export default function AdminHomePage() {
           >
             <div className="flex items-center gap-2">
               <FaFileDownload className="text-accent" />
-              <p className="font-semibold text-primary">
-                Eksport zamówień (CSV)
-              </p>
+              <p className="font-semibold text-primary">Eksport zamówień (CSV)</p>
             </div>
             <p className="mt-1 text-neutral-700">
               Miejsce na przycisk eksportu danych z Supabase do raportów
@@ -194,7 +188,7 @@ export default function AdminHomePage() {
         </div>
       </section>
 
-      {/* BLOK INFORMACYJNY – BEZPIECZEŃSTWO I ORGANIZACJA PRACY */}
+      {/* BLOK INFORMACYJNY */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start">
         <div className="rounded-3xl bg-white border border-border p-5 shadow-soft space-y-3">
           <div className="flex items-center gap-3">
@@ -212,21 +206,18 @@ export default function AdminHomePage() {
               <strong>Nowe</strong>.
             </li>
             <li>
-              Po kliknięciu w wiersz otwórz szczegóły konfiguracji – zwróć
-              uwagę na <strong>wymiary</strong>, <strong>kolor</strong> i{" "}
+              Po kliknięciu w wiersz otwórz szczegóły konfiguracji – zwróć uwagę na{" "}
+              <strong>wymiary</strong>, <strong>kolor</strong> i{" "}
               <strong>uwagi klienta</strong>.
             </li>
             <li>
-              Przygotuj wycenę / ofertę na podstawie konfiguracji i wyślij ją do
-              klienta z systemu CRM / poczty.
+              Przygotuj wycenę / ofertę na podstawie konfiguracji i wyślij ją do klienta z systemu CRM / poczty.
             </li>
             <li>
-              Zmień status na <strong>W realizacji</strong>, gdy zamówienie
-              trafia do produkcji lub montażu.
+              Zmień status na <strong>W realizacji</strong>, gdy zamówienie trafia do produkcji lub montażu.
             </li>
             <li>
-              Po zakończeniu – zaznacz <strong>Zrealizowane</strong>, aby mieć
-              czyty pipeline zamówień.
+              Po zakończeniu – zaznacz <strong>Zrealizowane</strong>, aby mieć czyty pipeline zamówień.
             </li>
           </ol>
         </div>
@@ -250,16 +241,13 @@ export default function AdminHomePage() {
               w Supabase.
             </li>
             <li>
-              W razie potrzeby możesz dodać kolejne konto administracyjne, ale
-              tylko z zaufanego adresu e-mail.
+              W razie potrzeby możesz dodać kolejne konto administracyjne, ale tylko z zaufanego adresu e-mail.
             </li>
             <li>
-              Sesja logowania jest obsługiwana przez Supabase Auth – po
-              wylogowaniu dostęp do <code>/admin</code> jest blokowany.
+              Sesja logowania jest obsługiwana przez Supabase Auth – po wylogowaniu dostęp do <code>/admin</code> jest blokowany.
             </li>
             <li>
-              Upewnij się, że hasło do konta admina jest unikalne i nie jest
-              używane w innych serwisach.
+              Upewnij się, że hasło do konta admina jest unikalne i nie jest używane w innych serwisach.
             </li>
           </ul>
         </div>

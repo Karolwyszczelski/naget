@@ -1,6 +1,5 @@
-// app/api/admin/orders/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireAdmin } from "@/lib/adminApiAuth";
 
 export const runtime = "nodejs";
 
@@ -12,8 +11,11 @@ function parseNumber(value: unknown): number {
   return 0;
 }
 
-export async function GET(_req: NextRequest) {
-  const supabase = supabaseServer();
+export async function GET(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.res;
+
+  const supabase = auth.supabase;
 
   try {
     const { data: orderRows, error: ordersError } = await supabase
