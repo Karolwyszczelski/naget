@@ -2,7 +2,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { supabaseClient } from "@/lib/supabaseClient";
 
+async function adminFetch(input: RequestInfo, init: RequestInit = {}) {
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession();
+
+  const token = session?.access_token;
+  if (!token) throw new Error("Brak sesji admina. Zaloguj się ponownie.");
+
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+
+  return fetch(input, { ...init, headers });
+}
 type OrderStatus = "new" | "in_progress" | "done" | "cancelled";
 
 type OrderSummary = {
@@ -180,7 +195,7 @@ export default function AdminOrdersPage() {
     const loadOrders = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/admin/orders", {
+        const res = await adminFetch("/api/admin/orders", {
           method: "GET",
           headers: { Accept: "application/json" },
         });
@@ -253,7 +268,7 @@ export default function AdminOrdersPage() {
 
     const loadDetail = async () => {
       try {
-        const res = await fetch(
+        const res = await adminFetch(
           `/api/admin/orders/${encodeURIComponent(selectedId)}`
         );
         if (!res.ok) {
@@ -297,7 +312,7 @@ export default function AdminOrdersPage() {
     setSaveSuccess(null);
 
     try {
-      const res = await fetch(
+      const res = await adminFetch(
         `/api/admin/orders/${encodeURIComponent(selectedId)}`,
         {
           method: "PATCH",

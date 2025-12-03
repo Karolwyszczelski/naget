@@ -11,48 +11,92 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 });
 
 function generatePublicId() {
-  return "NAG-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+  // mniejsze ryzyko kolizji niż Math.random()
+  const id = crypto.randomUUID().split("-")[0].toUpperCase();
+  return `NAG-${id}`;
 }
+
+const toNumber = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const toMoney = (v: any) => Math.max(0, toNumber(v));
+const toQty = (v: any) => {
+  const n = Math.floor(toNumber(v));
+  return n > 0 ? n : 1;
+};
+
+const isEmail = (v: any) =>
+  typeof v === "string" && v.includes("@") && v.length <= 254;
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
 
     if (!body) {
-      return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+      return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
     const { customer, delivery, discount, cart } = body;
 
     if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
-      return NextResponse.json(
-        { error: "Cart is empty" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "cart_empty" }, { status: 400 });
+    }
+
+    // Minimalna walidacja danych klienta (bez lania wody)
+    if (!customer || typeof customer !== "object") {
+      return NextResponse.json({ error: "customer_required" }, { status: 400 });
+    }
+    if (!isEmail(customer.email)) {
+      return NextResponse.json({ error: "email_required" }, { status: 400 });
+    }
+    if (typeof customer.firstName !== "string" || customer.firstName.trim().length < 1) {
+      return NextResponse.json({ error: "first_name_required" }, { status: 400 });
+    }
+    if (typeof customer.lastName !== "string" || customer.lastName.trim().length < 1) {
+      return NextResponse.json({ error: "last_name_required" }, { status: 400 });
     }
 
     const cookieStore = await cookies();
-    const anonId = cookieStore.get("naget_wishlist_id")?.value ?? null;
 
+    // POPRAWKA: anon_id (z fallbackiem do starej nazwy, żeby nie rozbić istniejących sesji)
+    const anonId =
+      cookieStore.get("naget_anon_id")?.value ??
+      cookieStore.get("naget_wishlist_id")?.value ??
+      null;
+
+    // Next 15: req.ip usunięte — bierzemy z nagłówków reverse proxy (Vercel/CF/Nginx)
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      // @ts-ignore
-      req.ip ??
+      req.headers.get("x-real-ip")?.trim() ??
       null;
 
     const publicId = generatePublicId();
 
-    const cartTotal = Number(cart.totals?.cartTotal ?? 0);
-    const deliveryPrice = Number(cart.totals?.delivery ?? 0);
-    const discountAmount = Number(discount?.amount ?? 0);
-    const grandTotal = Number(cart.totals?.grandTotal ?? 0);
+    // 1) Totale liczone backendem z pozycji (spójność)
+    const safeItems = cart.items;
+    const cartTotal = safeItems.reduce((sum: number, item: any) => {
+      const qty = toQty(item?.quantity);
+      const unit = toMoney(item?.unitPrice);
+      return sum + qty * unit;
+    }, 0);
+
+    // 2) Delivery liczone backendem (na razie z delivery.basePrice; docelowo z cennika serwerowego)
+    const deliveryMethod = (delivery?.method ?? "transport") as string;
+    const deliveryPrice =
+      deliveryMethod === "transport" ? toMoney(delivery?.basePrice) : 0;
+
+    // 3) Discount (na razie z payloadu; docelowo po stronie serwera po kodzie)
+    const discountAmount = toMoney(discount?.amount);
+    const grandTotal = Math.max(0, cartTotal + deliveryPrice - discountAmount);
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         public_id: publicId,
         anon_id: anonId,
-        user_id: null, // docelowo: ID z Supabase Auth
+        user_id: null,
         status: "new",
         currency: "PLN",
 
@@ -71,32 +115,33 @@ export async function POST(req: NextRequest) {
         country: customer?.country ?? null,
         google_place_id: customer?.googlePlaceId ?? null,
 
-        delivery_method: delivery?.method ?? "transport",
-        delivery_base_price: delivery?.basePrice ?? deliveryPrice,
+        delivery_method: deliveryMethod,
+        delivery_base_price: toMoney(delivery?.basePrice),
         delivery_note: delivery?.note ?? null,
 
         discount_code: discount?.code || null,
         discount_amount: discountAmount,
 
+        // IMPORTANT: zapisujemy policzone total-e (nie zaufane z frontu)
         cart_total: cartTotal,
         delivery_total: deliveryPrice,
         discount_total: discountAmount,
         grand_total: grandTotal,
 
-        // pełne snapshoty JSON
+        // snapshoty JSON
         customer_json: customer ?? null,
         delivery_json: delivery ?? null,
         discount_json: discount ?? null,
         cart_json: cart ?? null,
 
-        delivery_final_price: deliveryPrice, // na razie = orientacyjnie
+        delivery_final_price: deliveryPrice,
 
         ip,
         user_agent: req.headers.get("user-agent"),
         source: "website",
         meta: {
-          rawCustomer: customer ?? null,
-          rawDelivery: delivery ?? null,
+          clientTotals: cart?.totals ?? null,
+          totalsComputed: { cartTotal, deliveryPrice, discountAmount, grandTotal },
         },
       })
       .select("id, public_id")
@@ -104,22 +149,18 @@ export async function POST(req: NextRequest) {
 
     if (orderError || !order) {
       console.error("orders insert error", orderError);
-      return NextResponse.json(
-        { error: "order_insert_failed" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "order_insert_failed" }, { status: 500 });
     }
 
-    // order_items – pełne config każdego itemu, w tym dodatki
     const itemsToInsert =
-      cart.items?.map((item: any) => ({
+      safeItems.map((item: any) => ({
         order_id: order.id,
         product_id: item.productId,
         name: item.name,
         series: item.series,
-        quantity: item.quantity ?? 1,
-        unit_price: item.unitPrice ?? 0,
-        config: item.config ?? null, // TU trafia cała konfiguracja z koszyka
+        quantity: toQty(item.quantity),
+        unit_price: toMoney(item.unitPrice),
+        config: item.config ?? null,
       })) ?? [];
 
     if (itemsToInsert.length) {
@@ -142,9 +183,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Order POST fatal error", error);
-    return NextResponse.json(
-      { error: "order_post_failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "order_post_failed" }, { status: 500 });
   }
 }

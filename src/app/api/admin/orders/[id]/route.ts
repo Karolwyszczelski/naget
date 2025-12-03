@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/adminApiAuth";
+
+export const runtime = "nodejs";
 
 type UiOrderStatus = "new" | "in_progress" | "done" | "cancelled";
 
-// TAK JEST W BAZIE – enum order_status
-// (kluczowa różnica: "in-progress" z myślnikiem)
+// enum w DB: "in-progress"
 type DbOrderStatus = "new" | "in-progress" | "done" | "cancelled";
 
 type OrderItem = {
@@ -49,17 +50,6 @@ type OrderDetail = {
   customerNote: string | null;
 };
 
-// ---- Supabase client ----
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    persistSession: false,
-  },
-});
-
 // ---- mapowanie statusów ----
 
 function dbToUiStatus(status: string | null): UiOrderStatus {
@@ -75,9 +65,8 @@ function uiToDbStatus(status: UiOrderStatus): DbOrderStatus {
   return status;
 }
 
-// bezpieczne rzutowanie liczb (obsługa number/string/null)
 function toNumber(value: unknown, fallback = 0): number {
-  if (typeof value === "number") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
@@ -85,16 +74,21 @@ function toNumber(value: unknown, fallback = 0): number {
   return fallback;
 }
 
+function toQty(value: unknown): number {
+  const n = Math.floor(toNumber(value, 1));
+  return n > 0 ? n : 1;
+}
+
 // ---- GET /api/admin/orders/[id] ----
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.res;
+  const supabase = auth.supabase;
+
   const { id } = await ctx.params; // public_id, np. NAG-XXXXXX
 
   try {
-    // 1) pobierz zamówienie po public_id
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
@@ -138,13 +132,9 @@ export async function GET(
 
     if (orderError || !order) {
       console.error("GET order error", orderError);
-      return NextResponse.json(
-        { error: "Nie znaleziono zamówienia." },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 });
     }
 
-    // 2) pozycje z tabeli order_items
     const { data: items, error: itemsError } = await supabase
       .from("order_items")
       .select(
@@ -171,80 +161,76 @@ export async function GET(
       );
     }
 
-    const currency: string = order.currency ?? "PLN";
+    const currency: string = (order as any).currency ?? "PLN";
 
-    const cartJson = (order.cart_json ?? null) as any | null;
-    const totalsFromJson = cartJson?.totals ?? {};
+    const cartJson = ((order as any).cart_json ?? null) as any | null;
+    const totalsFromJson = (cartJson?.totals ?? {}) as any;
+    const meta = (((order as any).meta ?? null) as any) ?? {};
 
-    const cartTotal = toNumber(
-      order.cart_total ?? totalsFromJson.cartTotal ?? 0
-    );
+    const cartTotal = toNumber((order as any).cart_total ?? totalsFromJson.cartTotal ?? 0);
 
     const deliveryTotal = toNumber(
-      order.delivery_total ??
-        order.delivery_final_price ??
+      (order as any).delivery_total ??
+        (order as any).delivery_final_price ??
         totalsFromJson.delivery ??
         0
     );
 
     const discountTotal = toNumber(
-      order.discount_total ??
-        order.discount_amount ??
+      (order as any).discount_total ??
+        (order as any).discount_amount ??
         totalsFromJson.discount ??
         0
     );
 
     const totalAmount = toNumber(
-      order.grand_total ??
+      (order as any).grand_total ??
         totalsFromJson.grandTotal ??
-        cartTotal +
-          deliveryTotal -
-          (typeof discountTotal === "number" ? discountTotal : 0)
+        Math.max(0, cartTotal + deliveryTotal - discountTotal)
     );
 
     const detail: OrderDetail = {
-      id: order.public_id,
-      createdAt: order.created_at,
-      status: dbToUiStatus(order.status as string | null),
+      id: (order as any).public_id,
+      createdAt: (order as any).created_at,
+      status: dbToUiStatus((order as any).status as string | null),
       currency,
       totalAmount,
       cartTotal,
       deliveryTotal,
       discountTotal,
       customer: {
-        type: order.customer_type,
-        firstName: order.first_name,
-        lastName: order.last_name,
-        companyName: order.company_name,
-        nip: order.nip,
-        email: order.email,
-        phone: order.phone,
-        addressLine1: order.address_line1,
-        addressLine2: order.address_line2,
-        postalCode: order.postal_code,
-        city: order.city,
-        country: order.country,
+        type: (order as any).customer_type ?? null,
+        firstName: (order as any).first_name ?? null,
+        lastName: (order as any).last_name ?? null,
+        companyName: (order as any).company_name ?? null,
+        nip: (order as any).nip ?? null,
+        email: (order as any).email ?? null,
+        phone: (order as any).phone ?? null,
+        addressLine1: (order as any).address_line1 ?? null,
+        addressLine2: (order as any).address_line2 ?? null,
+        postalCode: (order as any).postal_code ?? null,
+        city: (order as any).city ?? null,
+        country: (order as any).country ?? null,
       },
       delivery: {
-        method: order.delivery_method,
-        note: order.delivery_note,
+        method: (order as any).delivery_method ?? null,
+        note: (order as any).delivery_note ?? null,
       },
-      items:
-        (items ?? []).map((it: any) => ({
-          id: it.id,
-          productId: it.product_id,
-          name: it.name,
-          series: it.series,
-          unitPrice: toNumber(it.unit_price),
-          quantity: toNumber(it.quantity),
-          config: it.config ?? {},
-        })) ?? [],
-      internalNote: order.notes ?? null,
+      items: (items ?? []).map((it: any) => ({
+        id: it.id,
+        productId: it.product_id,
+        name: it.name,
+        series: it.series,
+        unitPrice: toNumber(it.unit_price),
+        quantity: toQty(it.quantity),
+        config: it.config ?? {},
+      })),
+      internalNote: (order as any).notes ?? null,
       customerNote:
-        order.meta?.customerNote ??
-        order.meta?.customer_note ??
+        meta?.customerNote ??
+        meta?.customer_note ??
         cartJson?.customerNote ??
-        order.delivery_note ??
+        (order as any).delivery_note ??
         null,
     };
 
@@ -260,11 +246,12 @@ export async function GET(
 
 // ---- PATCH /api/admin/orders/[id] ----
 
-export async function PATCH(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
-  const { id } = await ctx.params; // public_id
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.res;
+  const supabase = auth.supabase;
+
+  const { id } = await ctx.params;
 
   let body: {
     status: UiOrderStatus;
@@ -276,29 +263,22 @@ export async function PATCH(
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(
-      { error: "Nieprawidłowe dane wejściowe." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Nieprawidłowe dane wejściowe." }, { status: 400 });
   }
 
   const { status, internalNote } = body;
 
-  if (!status) {
-    return NextResponse.json(
-      { error: "Status jest wymagany." },
-      { status: 400 }
-    );
+  if (!status || !["new", "in_progress", "done", "cancelled"].includes(status)) {
+    return NextResponse.json({ error: "Status jest wymagany." }, { status: 400 });
   }
 
   try {
-    // 1) update w bazie – mapujemy na wartość ENUM
     const dbStatus = uiToDbStatus(status);
 
     const { data: updated, error: updateError } = await supabase
       .from("orders")
       .update({
-        status: dbStatus,
+        status: dbStatus as DbOrderStatus,
         notes: internalNote ?? null,
       })
       .eq("public_id", id)
@@ -313,11 +293,9 @@ export async function PATCH(
       );
     }
 
-    // 2) TODO: wysyłka maila po zmianie statusu (SMTP / inny provider)
-
     return NextResponse.json({
-      status: dbToUiStatus(updated.status as string),
-      internalNote: updated.notes ?? null,
+      status: dbToUiStatus((updated as any).status as string),
+      internalNote: (updated as any).notes ?? null,
     });
   } catch (err) {
     console.error("PATCH /api/admin/orders/[id] error", err);
